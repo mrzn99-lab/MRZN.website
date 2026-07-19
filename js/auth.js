@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     hideMessages();
     const btn = document.getElementById("login-btn");
-    btn.disabled = true; btn.textContent = "লগইন হচ্ছে...";
+    btn.disabled = true; btn.textContent = "login...";
 
     const email = document.getElementById("login-email").value.trim();
     const password = document.getElementById("login-password").value;
