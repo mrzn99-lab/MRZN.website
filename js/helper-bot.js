@@ -14,8 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!toggle || !panel) return;
 
   toggle.addEventListener("click", () => {
-    panel.classList.toggle("show");
-    if (panel.classList.contains("show")) input.focus();
+    const isOpen = panel.style.display === "flex";
+    panel.style.display = isOpen ? "none" : "flex";
+    if (!isOpen) input.focus();
   });
 
   input.addEventListener("input", () => {
