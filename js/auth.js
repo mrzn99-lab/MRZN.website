@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-    btn.disabled = false; btn.textContent = "লগইন করুন";
+    btn.disabled = false; btn.textContent = "Login ";
 
     if (error) {
       showError(translateAuthError(error.message));
@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     hideMessages();
     const btn = document.getElementById("reg-btn");
-    btn.disabled = true; btn.textContent = "তৈরি হচ্ছে...";
+    btn.disabled = true; btn.textContent = "creating...";
 
     const username = document.getElementById("reg-username").value.trim();
     const email = document.getElementById("reg-email").value.trim();
@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       options: { data: { username } }
     });
 
-    btn.disabled = false; btn.textContent = "অ্যাকাউন্ট তৈরি করুন";
+    btn.disabled = false; btn.textContent = "Account created successful";
 
     if (error) {
       showError(translateAuthError(error.message));
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (data.session) {
       window.location.href = "index.html";
     } else {
-      showMsg("অ্যাকাউন্ট তৈরি হয়েছে! ইমেইল ভেরিফাই করে লগইন করুন।");
+      showMsg("Account created.Verify by checking your email. ");
     }
   });
 });
@@ -95,8 +95,8 @@ function hideMessages() {
 }
 
 function translateAuthError(msg) {
-  if (/invalid login credentials/i.test(msg)) return "ইমেইল বা পাসওয়ার্ড ভুল।";
-  if (/already registered/i.test(msg)) return "এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে।";
-  if (/password should be/i.test(msg)) return "পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টার হতে হবে।";
+  if (/invalid login credentials/i.test(msg)) return "Wrong Email or Password";
+  if (/already registered/i.test(msg)) return "Already logged in with this email";
+  if (/password should be/i.test(msg)) return "Password must be at least 6 digits long.";
   return msg;
 }
