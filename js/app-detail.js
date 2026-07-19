@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   CURRENT_APP_ID = qs("id");
   if (!CURRENT_APP_ID) {
-    document.getElementById("detail-wrap").innerHTML = `<div class="empty-state">অ্যাপ খুঁজে পাওয়া যায়নি।</div>`;
+    document.getElementById("detail-wrap").innerHTML = `<div class="empty-state">Can't find app</div>`;
     return;
   }
 
@@ -23,7 +23,7 @@ async function loadAppDetail() {
     .from("apps").select("*").eq("id", CURRENT_APP_ID).single();
 
   if (error || !app) {
-    document.getElementById("detail-wrap").innerHTML = `<div class="empty-state">এই অ্যাপটি পাওয়া যায়নি।</div>`;
+    document.getElementById("detail-wrap").innerHTML = `<div class="empty-state">This app could not be found. Please enter the full name and spelling correctly.</div>`;
     return;
   }
 
@@ -65,34 +65,34 @@ function renderDetail(app, ratingRow, reviews) {
         <div class="detail-rating">
           <span class="avg">${avg || "—"}</span>
           ${starsHTML(avg, 18)}
-          <span class="rating-count">(${count} রিভিউ)</span>
+          <span class="rating-count">(${count} Review)</span>
         </div>
       </div>
-      ${app.download_url ? `<a href="${escapeHTML(app.download_url)}" target="_blank" rel="noopener" class="btn btn-primary">ডাউনলোড করুন</a>` : ""}
+      ${app.download_url ? `<a href="${escapeHTML(app.download_url)}" target="_blank" rel="noopener" class="btn btn-primary">Download</a>` : ""}
     </div>
 
     ${screenshots}
 
     <div class="panel">
-      <div class="field-label" style="font-size:12px;margin-bottom:10px">সম্পর্কে</div>
+      <div class="field-label" style="font-size:12px;margin-bottom:10px">About</div>
       <p style="color:var(--text-dim);font-size:14.5px;line-height:1.8">${escapeHTML(app.description)}</p>
-      ${app.developer_note ? `<p style="color:var(--cyan);font-size:13.5px;margin-top:14px"><strong>ডেভেলপার নোট:</strong> ${escapeHTML(app.developer_note)}</p>` : ""}
+      ${app.developer_note ? `<p style="color:var(--cyan);font-size:13.5px;margin-top:14px"><strong>Developer/company:</strong> ${escapeHTML(app.developer_note)}</p>` : ""}
     </div>
 
     <div class="panel" style="margin-top:20px">
       <div style="display:flex;gap:30px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
-          <div class="field-label" style="font-size:12px;margin-bottom:12px">রেটিং ব্রেকডাউন</div>
-          ${count ? breakdown : `<div style="color:var(--text-faint);font-size:13px">এখনো কোনো রিভিউ নেই।</div>`}
+          <div class="field-label" style="font-size:12px;margin-bottom:12px">Rating breakdown</div>
+          ${count ? breakdown : `<div style="color:var(--text-faint);font-size:13px">No Review here</div>`}
         </div>
         <div style="flex:1;min-width:260px" id="review-form-wrap"></div>
       </div>
     </div>
 
     <div class="panel" style="margin-top:20px">
-      <div class="field-label" style="font-size:12px;margin-bottom:14px">সব রিভিউ (${reviews.length})</div>
+      <div class="field-label" style="font-size:12px;margin-bottom:14px">All Review (${reviews.length})</div>
       <div id="review-list">
-        ${reviews.length ? reviews.map(reviewItemHTML).join("") : `<div style="color:var(--text-faint);font-size:13.5px">প্রথম রিভিউটি আপনিই দিন।</div>`}
+        ${reviews.length ? reviews.map(reviewItemHTML).join("") : `<div style="color:var(--text-faint);font-size:13.5px">Be the first to review.</div>`}
       </div>
     </div>
   `;
@@ -121,7 +121,7 @@ function renderReviewForm(myReview) {
   const wrap = document.getElementById("review-form-wrap");
   if (!CURRENT_SESSION) {
     wrap.innerHTML = `
-      <div class="field-label" style="font-size:12px;margin-bottom:12px">রিভিউ দিন</div>
+      <div class="field-label" style="font-size:12px;margin-bottom:12px">Review</div>
       <div style="color:var(--text-faint);font-size:13.5px">রিভিউ দিতে <a href="login.html" style="color:var(--cyan);text-decoration:underline">লগইন</a> করুন।</div>
     `;
     return;
@@ -130,11 +130,11 @@ function renderReviewForm(myReview) {
   SELECTED_RATING = myReview?.rating || 0;
 
   wrap.innerHTML = `
-    <div class="field-label" style="font-size:12px;margin-bottom:12px">${myReview ? "আপনার রিভিউ এডিট করুন" : "রিভিউ দিন"}</div>
+    <div class="field-label" style="font-size:12px;margin-bottom:12px">${myReview ? "Edit Review" : "Leave a review"}</div>
     <div class="star-input" id="star-input" style="margin-bottom:12px"></div>
-    <textarea class="field" id="review-comment" placeholder="আপনার অভিজ্ঞতা লিখুন (ঐচ্ছিক)">${myReview ? escapeHTML(myReview.comment || "") : ""}</textarea>
+    <textarea class="field" id="review-comment" placeholder=" Share your experience. ">${myReview ? escapeHTML(myReview.comment || "") : ""}</textarea>
     <div style="display:flex;gap:10px;margin-top:12px">
-      <button class="btn btn-primary btn-sm" id="submit-review-btn">${myReview ? "আপডেট করুন" : "সাবমিট করুন"}</button>
+      <button class="btn btn-primary btn-sm" id="submit-review-btn">${myReview ? "Update Review" : "Submit"}</button>
       ${myReview ? `<button class="btn btn-danger btn-sm" id="delete-review-btn">মুছুন</button>` : ""}
     </div>
   `;
@@ -167,12 +167,12 @@ function bindReviewForm() {
 
 async function submitReview() {
   if (!SELECTED_RATING) {
-    showToast("দয়া করে একটি রেটিং দিন", "error");
+    showToast("Please leave a review. ", "error");
     return;
   }
   const comment = document.getElementById("review-comment").value.trim();
   const btn = document.getElementById("submit-review-btn");
-  btn.disabled = true; btn.textContent = "সাবমিট হচ্ছে...";
+  btn.disabled = true; btn.textContent = "Submitting ...";
 
   const { error } = await supabaseClient.from("reviews").upsert({
     app_id: CURRENT_APP_ID,
@@ -182,18 +182,18 @@ async function submitReview() {
   }, { onConflict: "app_id,user_id" });
 
   if (error) {
-    showToast("রিভিউ সাবমিট করা যায়নি।", "error");
+    showToast("Could not submit.", "error");
     console.error(error);
-    btn.disabled = false; btn.textContent = "সাবমিট করুন";
+    btn.disabled = false; btn.textContent = "Submit ";
     return;
   }
 
-  showToast("রিভিউ সাবমিট হয়েছে!", "success");
+  showToast("Submitted ", "success");
   await loadAppDetail();
 }
 
 async function deleteReview() {
-  if (!confirm("রিভিউটি মুছে ফেলতে চান?")) return;
+  if (!confirm("Do you want to delete the review?")) return;
   const { error } = await supabaseClient
     .from("reviews").delete()
     .eq("app_id", CURRENT_APP_ID).eq("user_id", CURRENT_SESSION.user.id);
@@ -202,6 +202,6 @@ async function deleteReview() {
     showToast("মুছা যায়নি।", "error");
     return;
   }
-  showToast("রিভিউ মুছে ফেলা হয়েছে।", "success");
+  showToast("Deleted", "success");
   await loadAppDetail();
 }
