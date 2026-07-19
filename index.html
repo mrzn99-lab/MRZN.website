@@ -75,22 +75,31 @@
   </div>
 </footer>
 
-<!-- SITE HELPER WIDGET -->
-<button id="helper-bot-toggle" style="position:fixed;bottom:22px;right:22px;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:22px;box-shadow:0 4px 20px rgba(0,229,255,0.35);z-index:100">💬</button>
-<div id="helper-bot-panel" style="position:fixed;bottom:88px;right:22px;width:min(320px, calc(100vw - 44px));max-height:420px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:none;flex-direction:column;z-index:100;box-shadow:0 10px 40px rgba(0,0,0,0.5)">
-  <div style="font-family:var(--f-ui);font-weight:700;font-size:14px;margin-bottom:10px">Find an app</div>
-  <input type="text" id="helper-bot-input" class="field" placeholder="e.g. video editor, games, VPN..." style="margin-bottom:10px">
-  <div id="helper-bot-results" style="overflow-y:auto;flex:1">
-    <div style="color:var(--text-faint);font-size:13px;padding:10px 0">Type an app name, category, or what you're looking for...</div>
+<!-- SITE HELPER WIDGET (full-screen) -->
+<button id="helper-bot-toggle" style="position:fixed;bottom:22px;right:22px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:23px;box-shadow:0 4px 20px rgba(0,229,255,0.45);z-index:200">💬</button>
+
+<div id="helper-bot-panel" style="
+  position:fixed; inset:0; z-index:300; display:none; flex-direction:column;
+  background-image:linear-gradient(rgba(7,11,20,0.88),rgba(7,11,20,0.92)), url('assets/assistant-bg.jpg');
+  background-size:cover; background-position:center;
+">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)">
+    <div style="font-family:var(--f-display);font-weight:700;font-size:18px;color:var(--cyan)">MRZN Assistant</div>
+    <button id="helper-bot-close" style="font-size:26px;color:var(--text-faint)">✕</button>
+  </div>
+
+  <div id="helper-bot-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:20px;max-width:640px;width:100%;margin:0 auto"></div>
+
+  <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;max-width:640px;width:100%;margin:0 auto">
+    <input type="text" id="helper-bot-input" class="field" placeholder="Type a message... (English, বাংলা, Banglish)" style="flex:1">
+    <button id="helper-bot-send" class="btn btn-primary" style="padding:12px 20px">Send</button>
   </div>
 </div>
-<style>#helper-bot-panel.show{display:flex}</style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/main.js"></script>
-<script src="js/helper-bot.js?v=2"></script>
+<script src="js/assistant.js?v=1"></script>
 </body>
-  </html>
-                                                                                                                                                                                         
+</html>
