@@ -24,6 +24,34 @@ const SITE_INFO = {
   tiktok: "https://vm.tiktok.com/ZS9r8bp4T8YjC-dFSSk/",
 };
 
+// ---------- INDEPENDENT APP DATA LOADING ----------
+// Don't rely on main.js's timing — fetch our own copy so the assistant
+// works correctly even if opened before the homepage finishes loading.
+let ASSISTANT_APPS = [];
+let ASSISTANT_APPS_READY = false;
+
+async function loadAssistantApps() {
+  try {
+    const { data, error } = await supabaseClient.from("apps").select("*");
+    if (!error && data) {
+      ASSISTANT_APPS = data;
+      window.ALL_APPS = window.ALL_APPS && window.ALL_APPS.length ? window.ALL_APPS : data;
+    }
+  } catch (e) {
+    console.error("Assistant: could not load apps", e);
+  } finally {
+    ASSISTANT_APPS_READY = true;
+  }
+}
+loadAssistantApps();
+
+function getAppsForSearch() {
+  // prefer whichever list has more data
+  const a = window.ALL_APPS || [];
+  const b = ASSISTANT_APPS || [];
+  return a.length >= b.length ? a : b;
+}
+
 // ---------- LEVENSHTEIN DISTANCE (for typo tolerance) ----------
 function levenshtein(a, b) {
   a = a.toLowerCase(); b = b.toLowerCase();
@@ -112,11 +140,14 @@ function checkKnowledgeBase(text) {
 // Priority: exact name > category > description/developer_note > fuzzy name match
 function searchAppsWeighted(query) {
   const q = query.toLowerCase().trim();
-  const apps = window.ALL_APPS || [];
+  const apps = getAppsForSearch();
   if (!q) return { exact: [], fuzzy: [] };
 
   const nameMatches = apps.filter((a) => (a.name || "").toLowerCase().includes(q));
-  const categoryMatches = apps.filter((a) => (a.category || "").toLowerCase().includes(q));
+  const categoryMatches = apps.filter((a) => {
+    const cat = (a.category || "").toLowerCase();
+    return cat.includes(q) || (cat.length > 2 && q.includes(cat));
+  });
   const descMatches = apps.filter((a) =>
     (a.description || "").toLowerCase().includes(q) ||
     (a.developer_note || "").toLowerCase().includes(q)
@@ -223,7 +254,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 3. vague app request -> ask a clarifying question
     const wordCount = text.trim().split(/\s+/).length;
-    if (/\b(an?|the)?\s*(app|game|apps|games)\b/i.test(text) && wordCount <= 4) {
+    const vaguePattern = /\b(an?|the)?\s*(app|game|apps|games)\b/i;
+    const vagueBangla = /(আপ|অ্যাপ|গেম)/;
+    if ((vaguePattern.test(text) || vagueBangla.test(text)) && wordCount <= 5) {
       CHAT_STATE.awaitingCategory = true;
       return addMessage("What kind? (e.g. action, puzzle, tools, VPN, photo editor...)", "bot");
     }
