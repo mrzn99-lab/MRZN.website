@@ -28,9 +28,9 @@ function starsHTML(rating, size = 14) {
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
   if (diff < 60) return "এইমাত্র";
-  if (diff < 3600) return Math.floor(diff / 60) + " মিনিট আগে";
-  if (diff < 86400) return Math.floor(diff / 3600) + " ঘণ্টা আগে";
-  if (diff < 2592000) return Math.floor(diff / 86400) + " দিন আগে";
+  if (diff < 3600) return Math.floor(diff / 60) + " min ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + " hours ago";
+  if (diff < 2592000) return Math.floor(diff / 86400) + " day ago";
   return new Date(dateStr).toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
 }
 
@@ -91,7 +91,7 @@ async function refreshNavAuth() {
   const name = profile?.username || user.email.split("@")[0];
 
   slot.innerHTML = `
-    ${isAdmin ? '<a href="admin.html" class="btn-ghost btn btn-sm">অ্যাডমিন</a>' : ""}
+    ${isAdmin ? '<a href="admin.html" class="btn-ghost btn btn-sm">Admin</a>' : ""}
     <a href="profile.html" class="nav-icon-btn" title="${escapeHTML(name)}">${initials(name)}</a>
   `;
 }
