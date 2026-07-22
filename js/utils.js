@@ -1,5 +1,34 @@
 /* ===================== SHARED UTILITIES ===================== */
 
+// Global error catcher — surfaces any hidden JS error on-screen so it's
+// never silently stuck. Remove this once the site is fully stable.
+window.addEventListener("error", (e) => {
+  console.error("Uncaught error:", e.error || e.message);
+  showDebugError(`JS Error: ${e.message} (${e.filename?.split("/").pop()}:${e.lineno})`);
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("Unhandled promise rejection:", e.reason);
+  showDebugError(`Promise error: ${e.reason?.message || e.reason}`);
+});
+
+function showDebugError(msg) {
+  let box = document.getElementById("debug-error-box");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "debug-error-box";
+    box.style.cssText = `
+      position:fixed; top:0; left:0; right:0; z-index:9999;
+      background:#ff4d6d; color:#fff; font-family:monospace; font-size:12px;
+      padding:10px 14px; max-height:40vh; overflow-y:auto; white-space:pre-wrap;
+    `;
+    document.body.appendChild(box);
+  }
+  const line = document.createElement("div");
+  line.style.cssText = "border-top:1px solid rgba(255,255,255,0.3); padding-top:6px; margin-top:6px";
+  line.textContent = msg;
+  box.appendChild(line);
+}
+
 function showToast(msg, type = "info") {
   let toast = document.getElementById("global-toast");
   if (!toast) {
@@ -27,11 +56,11 @@ function starsHTML(rating, size = 14) {
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60) return "এইমাত্র";
+  if (diff < 60) return "just now";
   if (diff < 3600) return Math.floor(diff / 60) + " min ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + " hours ago";
-  if (diff < 2592000) return Math.floor(diff / 86400) + " day ago";
-  return new Date(dateStr).toLocaleDateString("bn-BD", { year: "numeric", month: "short", day: "numeric" });
+  if (diff < 86400) return Math.floor(diff / 3600) + " hr ago";
+  if (diff < 2592000) return Math.floor(diff / 86400) + " days ago";
+  return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function initials(name) {
@@ -76,7 +105,7 @@ async function refreshNavAuth() {
   if (!slot) return;
 
   if (!session) {
-    slot.innerHTML = `<a href="login.html" class="btn btn-primary btn-sm">লগইন</a>`;
+    slot.innerHTML = `<a href="login.html" class="btn btn-primary btn-sm">Log In</a>`;
     return;
   }
 
