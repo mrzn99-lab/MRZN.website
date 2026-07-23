@@ -27,6 +27,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadAdminApps();
   loadFlaggedReviews();
 
+  let adminSearchTimer;
+  document.getElementById("admin-search-input").addEventListener("input", (e) => {
+    clearTimeout(adminSearchTimer);
+    adminSearchTimer = setTimeout(() => {
+      loadAdminApps(e.target.value.trim());
+    }, 350);
+  });
+
   document.getElementById("add-app-btn").addEventListener("click", () => openModal());
   document.getElementById("close-modal").addEventListener("click", closeModal);
   document.getElementById("app-modal").addEventListener("click", (e) => {
@@ -35,9 +43,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("app-form").addEventListener("submit", saveApp);
 });
 
-async function loadAdminApps() {
-  const { data: apps, error } = await supabaseClient
-    .from("apps").select("*").order("created_at", { ascending: false });
+async function loadAdminApps(searchQuery = "") {
+  let query = supabaseClient.from("apps").select("*").order("created_at", { ascending: false });
+
+  if (searchQuery) {
+    const q = searchQuery.replace(/[%_]/g, "");
+    query = query.ilike("name", `%${q}%`);
+  } else {
+    query = query.limit(100); // default view: latest 100, use search to find older ones
+  }
+
+  const { data: apps, error } = await query;
 
   const { data: ratings } = await supabaseClient.from("app_ratings").select("*");
   const ratingMap = {};
@@ -46,7 +62,7 @@ async function loadAdminApps() {
   const tbody = document.getElementById("admin-table-body");
 
   if (error || !apps?.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px">No apps added yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px">${searchQuery ? "No apps match that search." : "No apps added yet."}</td></tr>`;
     return;
   }
 
