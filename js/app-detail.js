@@ -85,6 +85,7 @@ function renderDetail(app, ratingRow, reviews) {
         </div>
       </div>
       ${app.download_url ? `<a href="${escapeHTML(app.download_url)}" target="_blank" rel="noopener" class="btn btn-primary">Download</a>` : ""}
+      <button class="btn btn-ghost" id="favorite-btn" data-app-id="${app.id}" data-app-name="${escapeHTML(app.name)}" data-app-icon="${escapeHTML(app.icon_url || '')}">${isFavorited(app.id) ? "❤️ Favorited" : "🤍 Favorite"}</button>
     </div>
 
     ${screenshots}
@@ -114,6 +115,30 @@ function renderDetail(app, ratingRow, reviews) {
   `;
 
   renderReviewForm(myReview);
+
+  document.getElementById("favorite-btn")?.addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    const isNowFav = toggleFavorite(btn.dataset.appId, btn.dataset.appName, btn.dataset.appIcon);
+    btn.textContent = isNowFav ? "❤️ Favorited" : "🤍 Favorite";
+    showToast(isNowFav ? "Added to favorites!" : "Removed from favorites.", "success");
+  });
+}
+
+function isFavorited(appId) {
+  const favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+  return favs.some(f => f.id === appId);
+}
+
+function toggleFavorite(appId, appName, appIcon) {
+  let favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+  const exists = favs.some(f => f.id === appId);
+  if (exists) {
+    favs = favs.filter(f => f.id !== appId);
+  } else {
+    favs.unshift({ id: appId, name: appName, icon: appIcon });
+  }
+  localStorage.setItem("mrzn_favorites", JSON.stringify(favs));
+  return !exists;
 }
 
 function trackRecentlyViewed(app) {
@@ -287,4 +312,4 @@ async function deleteReview() {
   }
   showToast("Review deleted.", "success");
   await loadAppDetail();
-}
+                                    }
