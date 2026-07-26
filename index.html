@@ -5,7 +5,7 @@
 <link rel="icon" type="image/png" href="assets/logo.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MRZN Apps & Games</title>
-<meta name="description" content="MRZN Apps & Games helps you discover useful apps and games from different platforms. Browse by category, search instantly, read descriptions, view screenshots, and find the right app for any purpose.">
+<meta name="description" content="MRZN Apps & Games is a modern app discovery platform where you can explore apps across multiple categories, compare features, read reviews, and quickly find the right application for your needs.">
 <link rel="stylesheet" href="css/style.css">
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-PFK6JYF7Y1"></script>
@@ -40,7 +40,7 @@
   <div class="container">
     <div class="boot-log" id="boot-log"></div>
     <h1 class="hero-headline">Find your next<br>favorite app.</h1>
-    <p class="hero-sub">MRZN Apps & Games is a modern app discovery platform where you can explore apps across multiple categories, compare features, read reviews, and quickly find the right application for your needs.💝.</p>
+    <p class="hero-sub">Apps, games, and AI tools hand-built in Termux — straight from the developer, with community reviews.</p>
     <div class="hero-cta">
       <a href="#apps" class="btn btn-primary">Browse Apps</a>
       <a href="login.html" class="btn btn-ghost">Log In to Review</a>
@@ -80,7 +80,7 @@
 
 <footer class="footer">
   <div class="container">
-    <div class="footer-text"> MRZN Apps & Games ®— Find your easy life by using app.</div>
+    <div class="footer-text">MRZN Apps & Games ®</div>
     <div style="display:flex;gap:16px;align-items:center">
       <a href="https://youtube.com/@mrznapps_games?si=fKnK3nBYOeyRThQA" target="_blank" rel="noopener" class="nav-icon-btn" title="YouTube" style="width:36px;height:36px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c2 .6 9.4.6 9.4.6s7.4 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
@@ -88,13 +88,16 @@
       <a href="https://vm.tiktok.com/ZS9r8bp4T8YjC-dFSSk/" target="_blank" rel="noopener" class="nav-icon-btn" title="TikTok" style="width:36px;height:36px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82s.51.5 0 0A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48Z"/></svg>
       </a>
-      <span class="footer-text">mrzn-website</span>
+      <span class="footer-text">mrzn-web</span>
     </div>
   </div>
 </footer>
 
 <!-- SITE HELPER WIDGET (full-screen) -->
-<button id="helper-bot-toggle" style="position:fixed;bottom:22px;right:22px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:23px;box-shadow:0 4px 20px rgba(0,229,255,0.45);z-index:200">💬</button>
+<div style="position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px">
+  <button id="helper-bot-toggle" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:23px;box-shadow:0 4px 20px rgba(0,229,255,0.45)">💬</button>
+  <span style="font-family:var(--f-mono);font-size:10px;color:var(--text-faint);background:rgba(7,11,20,0.7);padding:2px 8px;border-radius:6px">Support Bot</span>
+</div>
 
 <div id="helper-bot-panel" style="
   position:fixed; inset:0; z-index:300; display:none; flex-direction:column;
@@ -117,6 +120,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/app-request.js"></script>
 <script src="js/settings-apply.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/main.js"></script>
