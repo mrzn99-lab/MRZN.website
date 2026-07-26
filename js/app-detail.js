@@ -41,8 +41,9 @@ async function loadAppDetail() {
       .from("reviews_with_user").select("*").eq("app_id", CURRENT_APP_ID);
     if (reviewsErr) console.error("reviews error:", reviewsErr);
 
-    renderDetail(app, ratingRow, reviews || []);
-    bindReviewForm(app);
+  renderDetail(app, ratingRow, reviews || []);
+  bindReviewForm(app);
+  trackRecentlyViewed(app);
   } catch (err) {
     document.getElementById("detail-wrap").innerHTML =
       `<div class="empty-state">Something went wrong: ${escapeHTML(err.message)}</div>`;
@@ -113,6 +114,16 @@ function renderDetail(app, ratingRow, reviews) {
   `;
 
   renderReviewForm(myReview);
+}
+
+function trackRecentlyViewed(app) {
+  try {
+    let recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
+    recent = recent.filter(a => a.id !== app.id); // remove if already there
+    recent.unshift({ id: app.id, name: app.name, icon: app.icon_url });
+    recent = recent.slice(0, 20); // keep last 20
+    localStorage.setItem("mrzn_recently_viewed", JSON.stringify(recent));
+  } catch (e) { /* ignore storage errors */ }
 }
 
 function injectStructuredData(app, ratingRow) {
