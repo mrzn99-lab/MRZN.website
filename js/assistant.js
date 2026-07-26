@@ -266,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const { exact, fuzzy } = searchAppsWeighted(expanded);
     if (exact.length) return renderAppList(exact, `Yes — here's what's available:`);
     if (fuzzy.length) return renderAppList(fuzzy, `That app isn't listed, but did you mean:`);
-    addMessage("This app isn't available on our website yet. Try browsing by category on the homepage!", "bot");
+    addMessage(`This app isn't available on our website yet. <a href="#" onclick="window.openAppRequestModal && window.openAppRequestModal('${escapeHTML(text)}'); return false;" style="color:var(--cyan);text-decoration:underline">Request it here</a>.`, "bot");
   }
 
   function submit() {
