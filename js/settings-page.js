@@ -73,6 +73,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ---------- Favorites ----------
+  const favorites = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+  document.getElementById("favorites-count").textContent = `${favorites.length} apps favorited`;
+
+  document.getElementById("view-favorites-btn").addEventListener("click", () => {
+    const list = document.getElementById("favorites-list");
+    const isOpen = list.style.display === "block";
+    list.style.display = isOpen ? "none" : "block";
+    if (!isOpen) {
+      list.innerHTML = favorites.length
+        ? favorites.map(a => `
+            <a href="app.html?id=${a.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;color:inherit">
+              <img src="${escapeHTML(a.icon || 'assets/placeholder-icon.svg')}" style="width:30px;height:30px;border-radius:7px;background:var(--panel-2)">
+              <span style="font-size:13.5px">${escapeHTML(a.name)}</span>
+            </a>`).join("")
+        : `<div style="color:var(--text-faint);font-size:13px">No favorites yet.</div>`;
+    }
+  });
+
+  // ---------- Request an app (shortcut) ----------
+  document.getElementById("open-request-btn").addEventListener("click", () => {
+    window.openAppRequestModal?.();
+  });
+
+  // ---------- Reset to defaults (keeps favorites/recently viewed) ----------
+  document.getElementById("reset-defaults-btn").addEventListener("click", () => {
+    if (!confirm("Reset appearance and sound settings to default? Your favorites and history will be kept.")) return;
+    ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
+     "mrzn_sound_enabled", "mrzn_voice_enabled"].forEach(k => localStorage.removeItem(k));
+    showToast("Settings reset! Reloading...", "success");
+    setTimeout(() => window.location.reload(), 1000);
+  });
+
   // ---------- Clear cache ----------
   document.getElementById("clear-cache-btn").addEventListener("click", () => {
     if (!confirm("This will reset all your site preferences (theme, font size, recently viewed, etc). Continue?")) return;
@@ -97,4 +130,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-                       
