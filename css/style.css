@@ -338,3 +338,17 @@ textarea.field{ min-height:100px; resize:vertical; }
   .detail-top{ flex-direction:column; }
   .section{ padding:40px 0; }
 }
+
+/* ===================== SETTINGS: COMPACT MODE & ANIMATION TOGGLE ===================== */
+.compact-mode .section{ padding:28px 0; }
+.compact-mode .hero{ padding:32px 0 24px; }
+.compact-mode .app-card{ padding:12px; }
+.compact-mode .panel{ padding:16px; }
+.compact-mode .navbar .container{ height:54px; }
+
+.mrzn-no-animations *,
+.mrzn-no-animations *::before,
+.mrzn-no-animations *::after{
+  animation:none !important;
+  transition:none !important;
+}
