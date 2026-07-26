@@ -123,6 +123,7 @@ function renderApps(list) {
     wrap.innerHTML = `<div class="empty-state">
       <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h.01M15 9h.01M9 15c1 1 5 1 6 0"/></svg>
       <div>No apps found.</div>
+      <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="window.openAppRequestModal && window.openAppRequestModal('${escapeHTML(CURRENT_SEARCH)}')">Request this app</button>
     </div>`;
     return;
   }
