@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — MRZN Apps & Games</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.settings-section{ margin-bottom:28px; }
+.settings-eyebrow{ font-family:var(--f-ui); font-weight:700; font-size:12.5px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
+.settings-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
+.settings-row:last-child{ border-bottom:none; }
+.settings-row-label{ font-family:var(--f-ui); font-weight:600; font-size:14.5px; }
+.settings-row-desc{ font-size:12.5px; color:var(--text-faint); margin-top:2px; }
+.swatch{ width:30px; height:30px; border-radius:8px; border:2px solid transparent; cursor:pointer; }
+.swatch.active{ border-color:#fff; }
+.seg-group{ display:flex; gap:6px; background:var(--void); border-radius:8px; padding:4px; }
+.seg-btn{ padding:7px 14px; border-radius:6px; font-family:var(--f-ui); font-weight:600; font-size:12.5px; color:var(--text-dim); }
+.seg-btn.active{ background:var(--cyan); color:var(--void); }
+.toggle-switch{ position:relative; width:46px; height:26px; }
+.toggle-switch input{ opacity:0; width:0; height:0; }
+.toggle-slider{ position:absolute; inset:0; background:var(--line); border-radius:999px; cursor:pointer; transition:.2s; }
+.toggle-slider::before{ content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+.toggle-switch input:checked + .toggle-slider{ background:var(--cyan); }
+.toggle-switch input:checked + .toggle-slider::before{ transform:translateX(20px); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="brand">
+      <img src="assets/logo.png" class="brand-mark" style="object-fit:cover">
+      <span class="brand-name">MRZN <span>Apps & Games</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="index.html#apps">Apps</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+    <div class="nav-user" id="nav-auth-slot"></div>
+  </div>
+</nav>
+
+<div class="container" style="padding-top:36px; max-width:700px">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">PREFERENCES</div>
+      <h2 class="section-title">Settings</h2>
+    </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="panel settings-section">
+    <div class="settings-eyebrow">🎨 Appearance</div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Accent Color</div>
+        <div class="settings-row-desc">Choose your favorite color</div>
+      </div>
+      <div style="display:flex;gap:8px" id="accent-swatches">
+        <div class="swatch" data-color="blue" style="background:#00e5ff"></div>
+        <div class="swatch" data-color="green" style="background:#39ff88"></div>
+        <div class="swatch" data-color="purple" style="background:#b829f7"></div>
+        <div class="swatch" data-color="red" style="background:#ff4d6d"></div>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Font Size</div>
+        <div class="settings-row-desc">Select your preferred text size</div>
+      </div>
+      <div class="seg-group" id="font-size-group">
+        <button class="seg-btn" data-size="small">Small</button>
+        <button class="seg-btn" data-size="medium">Medium</button>
+        <button class="seg-btn" data-size="large">Large</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Compact Mode</div>
+        <div class="settings-row-desc">Make the layout more compact</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="compact-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Animations</div>
+        <div class="settings-row-desc">Enable or disable motion effects</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="animation-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Data Saver Mode</div>
+        <div class="settings-row-desc">Skip loading extra screenshots</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="datasaver-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- USER EXPERIENCE -->
+  <div class="panel settings-section">
+    <div class="settings-eyebrow">🕒 User Experience</div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Recently Viewed</div>
+        <div class="settings-row-desc" id="recently-viewed-count">Apps you've recently seen</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="view-recent-btn">View</button>
+    </div>
+    <div id="recently-viewed-list" style="display:none;margin-top:6px"></div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Clear Cache</div>
+        <div class="settings-row-desc">Clear saved data and preferences</div>
+      </div>
+      <button class="btn btn-danger btn-sm" id="clear-cache-btn">Clear Now</button>
+    </div>
+  </div>
+
+  <!-- GENERAL -->
+  <div class="panel settings-section">
+    <div class="settings-eyebrow">ℹ️ General</div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">About MRZN Apps & Games</div>
+        <div class="settings-row-desc">A directory of apps and games with community reviews, built offline-first in Termux.</div>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Contact Developer</div>
+        <div class="settings-row-desc">Get in touch with the developer</div>
+      </div>
+      <a href="mailto:mdrafiuzzamanking99@gmail.com" class="btn btn-ghost btn-sm">Email</a>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Share Website</div>
+        <div class="settings-row-desc">Share MRZN Apps & Games with others</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="share-btn">Share</button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Sound Effects</div>
+        <div class="settings-row-desc">Enable or disable click sounds</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="sound-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Voice Narration</div>
+        <div class="settings-row-desc">Enable or disable the welcome voice message</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="voice-toggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-text">© 2026 MRZN Apps & Games</div>
+    <div class="footer-text">mrzn-web.app</div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/settings-apply.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/settings-page.js"></script>
+</body>
+  </html>
+  
