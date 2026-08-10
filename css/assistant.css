@@ -1,0 +1,117 @@
+/* AI Assistant Styles */
+
+.ai-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ai-app-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.ai-app-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.ai-app-info {
+  flex: 1;
+}
+
+.ai-app-name {
+  font-weight: 700;
+  color: var(--cyan);
+  font-size: 14px;
+}
+
+.ai-app-category {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin: 2px 0;
+}
+
+.ai-app-rating {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.ai-app-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 6px 0;
+}
+
+.ai-comparison-table {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.ai-comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ai-comparison-table th,
+.ai-comparison-table td {
+  padding: 8px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.ai-comparison-table th {
+  background: var(--panel-2);
+  font-weight: 700;
+}
+
+.ai-apk-analysis {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.ai-apk-analysis ul {
+  margin: 8px 0 8px 20px;
+}
+
+.ai-recommendations {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.ai-msg-user,
+.ai-msg-bot {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin: 8px 0;
+  word-break: break-word;
+}
+
+.ai-msg-user {
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  color: var(--void);
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.ai-msg-bot {
+  background: var(--panel-2);
+  color: var(--text);
+  align-self: flex-start;
+}
