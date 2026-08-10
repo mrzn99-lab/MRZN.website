@@ -1,60 +1,86 @@
 /*
-  MRZN AI Assistant - Advanced Version
+  =====================================================================
+  MRZN APPS & GAMES — AI ASSISTANT (Advanced Version)
+  =====================================================================
   Features:
-  - Session-based chat memory (no DB persistence)
-  - Multilingual support (বাংলা/Banglish/English)
+  - Conversational chat (session memory)
+  - Multilingual (বাংলা/Banglish/English)
   - Typo tolerance & fuzzy matching
-  - App search from Supabase
-  - Intelligent recommendations
+  - App search, compare, recommend
   - APK analysis & security assessment
+  - No database persistence (session-only)
+  
+  Usage: window.openAssistantPanel() or click helper-bot-toggle
+  =====================================================================
 */
 
 class MRZNAssistant {
   constructor() {
-    // Session memory (cleared on page refresh)
+    // ===== SESSION MEMORY =====
     this.chatHistory = [];
     this.userPreferences = {
-      language: "auto", // auto-detect
+      language: "auto",
       favoriteCategories: [],
-      searchHistory: []
+      recentSearches: []
     };
     this.currentSession = new Date().getTime();
-    this.appsCache = null; // Will load from Supabase once
+    
+    // ===== CACHE =====
+    this.appsCache = null;
+    this.allCategories = [];
+    
+    // ===== STATE =====
+    this.isInitialized = false;
+    this.isLoading = false;
   }
 
-  // ===================== INIT =====================
+  // ===================== INITIALIZATION =====================
   async initialize() {
-    // Load apps catalog from Supabase (once per session)
-    await this.loadAppsCatalog();
-    console.log(`🤖 MRZN Assistant initialized. ${this.appsCache?.length || 0} apps loaded.`);
+    if (this.isInitialized) return;
+    
+    try {
+      await this.loadAppsCatalog();
+      this.isInitialized = true;
+      this.logDebug(`✅ AI Assistant initialized. ${this.appsCache?.length || 0} apps loaded.`);
+    } catch (err) {
+      this.logDebug(`❌ Initialization error: ${err.message}`);
+      this.appsCache = [];
+    }
   }
 
   async loadAppsCatalog() {
     try {
       const { data, error } = await supabaseClient
         .from("apps")
-        .select("id, name, category, description, rating:app_ratings(avg_rating, review_count), icon_url, download_url, permissions, security_score");
+        .select(`
+          id, name, category, description, 
+          icon_url, download_url, app_size, downloads, 
+          developer_note, screenshots
+        `);
       
       if (error) throw error;
+      
       this.appsCache = data || [];
+      this.allCategories = [...new Set((data || []).map(a => a.category).filter(Boolean))].sort();
+      
+      this.logDebug(`📦 Loaded ${this.appsCache.length} apps, ${this.allCategories.length} categories`);
     } catch (err) {
-      console.error("Failed to load apps catalog:", err);
-      this.appsCache = [];
+      this.logDebug(`❌ Failed to load catalog: ${err.message}`);
+      throw err;
     }
   }
 
   // ===================== LANGUAGE DETECTION =====================
   detectLanguage(text) {
-    // Detect বাংলা, Banglish, or English
     const bengaliPattern = /[\u0980-\u09FF]/;
-    const banglishPattern = /[a-z]+ [a-z]+/i; // Common Banglish words
+    const banglishPatterns = /\b(ami|amar|tomar|oi|ei|hocche|kichu|kise|korbo|jabe)\b/i;
     
     if (bengaliPattern.test(text)) return "bengali";
-    if (text.match(/\b(ami|amar|tomar|ei|oi|hocche)\b/i)) return "banglish";
+    if (banglishPatterns.test(text)) return "banglish";
     return "english";
   }
 
-  // ===================== TYPO CORRECTION =====================
+  // ===================== LEVENSHTEIN DISTANCE (Typo Correction) =====================
   levenshtein(a, b) {
     const m = a.length, n = b.length;
     const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
@@ -64,88 +90,89 @@ class MRZNAssistant {
     
     for (let i = 1; i <= m; i++) {
       for (let j = 1; j <= n; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1]
-          ? dp[i - 1][j - 1]
-          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + cost
+        );
       }
     }
     return dp[m][n];
   }
 
-  fuzzySearch(query, candidates, threshold = 0.6) {
-    // Typo-tolerant search
-    const results = candidates
+  similarity(a, b) {
+    const dist = this.levenshtein(a.toLowerCase(), b.toLowerCase());
+    const maxLen = Math.max(a.length, b.length) || 1;
+    return 1 - dist / maxLen;
+  }
+
+  fuzzySearch(query, candidates, threshold = 0.55) {
+    return candidates
       .map(item => ({
         ...item,
-        score: 1 - this.levenshtein(query.toLowerCase(), item.name.toLowerCase()) 
-                   / Math.max(query.length, item.name.length)
+        score: this.similarity(query, item.name)
       }))
       .filter(item => item.score >= threshold)
       .sort((a, b) => b.score - a.score);
-    
-    return results;
   }
 
   // ===================== INTENT RECOGNITION =====================
   recognizeIntent(text) {
     const lower = text.toLowerCase();
     
-    // Search/Browse intents
-    if (/খুঁজ|find|search|show|দেখ|দেখাও/.test(lower)) return "SEARCH";
-    if (/সব|all|category|list/.test(lower)) return "BROWSE";
-    
-    // Comparison intents
-    if (/vs|versus|বনাম|compare|পার্থক্য|difference/.test(lower)) return "COMPARE";
-    if (/সুপারিশ|recommend|suggest|চাই|চান/.test(lower)) return "RECOMMEND";
-    
-    // Detail intents
-    if (/details|বিস্তারিত|কি|কি\?|কত|কেন/.test(lower)) return "DETAIL";
-    if (/rating|রেটিং|রেট/.test(lower)) return "RATING";
-    if (/permission|অনুমতি|access/.test(lower)) return "PERMISSION";
-    if (/safe|secure|নিরাপদ|সিকিউর|বিপদ/.test(lower)) return "SECURITY";
-    if (/category|ক্যাটেগরি|ধরন|type/.test(lower)) return "CATEGORY";
-    if (/trending|জনপ্রিয়|popular|হট/.test(lower)) return "TRENDING";
-    
-    // Help/Greeting
-    if (/হাই|hello|hi|সালাম|হেলো|সাহায্য|help/.test(lower)) return "GREETING";
-    
-    return "SEARCH"; // Default to search
+    const intents = {
+      SEARCH: /খুঁজ|find|search|show|দেখ|দেখাও|চাই|চান/,
+      BROWSE: /সব|all|category|list|ধরন|ক্যাটেগরি/,
+      COMPARE: /vs|versus|বনাম|compare|পার্থক্য|difference|তুলনা/,
+      RECOMMEND: /সুপারিশ|recommend|suggest|ভালো|best|জন্য/,
+      DETAIL: /details?|বিস্তারিত|কি|কি\?|কেন|কত/,
+      RATING: /rating|রেটিং|রেট|score|স্কোর/,
+      PERMISSION: /permission|অনুমতি|access|permission/,
+      SECURITY: /safe|secure|নিরাপদ|সিকিউর|বিপদ|virus|malware/,
+      CATEGORY: /category|ক্যাটেগরি|ধরন|type|genre/,
+      TRENDING: /trending|জনপ্রিয়|popular|হট|নতুন/,
+      HELP: /help|সাহায্য|কি করতে পারি|কিভাবে/,
+      GREETING: /হাই|hello|hi|সালাম|হেলো|সুপ্রভাত|শুভ/
+    };
+
+    for (const [intent, pattern] of Object.entries(intents)) {
+      if (pattern.test(lower)) return intent;
+    }
+
+    return "SEARCH"; // Default
   }
 
   // ===================== ENTITY EXTRACTION =====================
   extractEntities(text) {
-    // Extract app names, categories, etc. from text
     const entities = {
       appNames: [],
       categories: [],
       keywords: []
     };
 
-    // Find app names (exact matches from catalog)
+    // Find app names (exact matches)
     for (const app of this.appsCache) {
       if (text.toLowerCase().includes(app.name.toLowerCase())) {
-        entities.appNames.push({
-          name: app.name,
-          id: app.id,
-          confidence: 1.0
-        });
+        entities.appNames.push({ name: app.name, id: app.id });
       }
     }
 
     // Find categories
-    const allCategories = [...new Set(this.appsCache.map(a => a.category))];
-    for (const cat of allCategories) {
+    for (const cat of this.allCategories) {
       if (text.toLowerCase().includes(cat.toLowerCase())) {
         entities.categories.push(cat);
       }
     }
 
-    // Extract keywords (words that aren't stop words)
-    const stopWords = [
-      "the", "a", "an", "and", "or", "but", "in", "on", "at",
-      "কি", "কেন", "কোথায়", "কত", "কার", "হল", "হলে"
-    ];
-    const words = text.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()));
+    // Extract keywords (non-stop words)
+    const stopWords = new Set([
+      "the", "a", "an", "and", "or", "but", "in", "on", "at", "is", "are", "be",
+      "কি", "কেন", "কোথায়", "কত", "কার", "হল", "হলে", "এ", "তে", "কে"
+    ]);
+
+    const words = text.split(/\s+/)
+      .filter(w => !stopWords.has(w.toLowerCase()) && w.length > 2);
     entities.keywords = words;
 
     return entities;
@@ -154,12 +181,18 @@ class MRZNAssistant {
   // ===================== SEARCH ENGINE =====================
   async searchApps(query, filters = {}) {
     if (!this.appsCache?.length) {
-      return { apps: [], status: "error", message: "App catalog not loaded" };
+      return { 
+        apps: [], 
+        status: "error", 
+        message: "App catalog not loaded" 
+      };
     }
+
+    const queryLower = query.toLowerCase();
 
     // 1. Exact name match
     const exactMatches = this.appsCache.filter(app =>
-      app.name.toLowerCase().includes(query.toLowerCase())
+      app.name.toLowerCase().includes(queryLower)
     );
 
     // 2. Fuzzy name match (typo tolerance)
@@ -167,18 +200,18 @@ class MRZNAssistant {
 
     // 3. Category match
     const categoryMatches = this.appsCache.filter(app =>
-      app.category.toLowerCase().includes(query.toLowerCase())
+      app.category.toLowerCase().includes(queryLower)
     );
 
     // 4. Description match
     const descMatches = this.appsCache.filter(app =>
-      app.description.toLowerCase().includes(query.toLowerCase())
+      app.description.toLowerCase().includes(queryLower)
     );
 
-    // Combine & deduplicate, preserving order by relevance
+    // Combine & deduplicate
     const seen = new Set();
     const allMatches = [];
-    
+
     for (const group of [exactMatches, fuzzyMatches, categoryMatches, descMatches]) {
       for (const app of group) {
         if (!seen.has(app.id)) {
@@ -193,40 +226,16 @@ class MRZNAssistant {
     if (filters.category) {
       filtered = filtered.filter(a => a.category === filters.category);
     }
-    if (filters.minRating) {
-      filtered = filtered.filter(a => (a.rating?.avg_rating || 0) >= filters.minRating);
-    }
-    if (filters.sort === "rating") {
-      filtered.sort((a, b) => (b.rating?.avg_rating || 0) - (a.rating?.avg_rating || 0));
-    }
+
+    // Add to recent searches
+    this.userPreferences.recentSearches.unshift(query);
+    this.userPreferences.recentSearches = this.userPreferences.recentSearches.slice(0, 10);
 
     return {
-      apps: filtered.slice(0, 10),
+      apps: filtered.slice(0, 8),
       total: allMatches.length,
       status: "success"
     };
-  }
-
-  // ===================== RECOMMENDATION ENGINE =====================
-  async getRecommendations(userPreferences) {
-    // Recommend apps based on user's interests
-    let recommendations = this.appsCache.slice();
-
-    // Filter by favorite categories
-    if (userPreferences.favoriteCategories?.length) {
-      recommendations = recommendations.filter(app =>
-        userPreferences.favoriteCategories.includes(app.category)
-      );
-    }
-
-    // Sort by rating & review count
-    recommendations.sort((a, b) => {
-      const aScore = (a.rating?.avg_rating || 0) * Math.sqrt(a.rating?.review_count || 1);
-      const bScore = (b.rating?.avg_rating || 0) * Math.sqrt(b.rating?.review_count || 1);
-      return bScore - aScore;
-    });
-
-    return recommendations.slice(0, 5);
   }
 
   // ===================== COMPARISON ENGINE =====================
@@ -240,252 +249,260 @@ class MRZNAssistant {
 
     return {
       status: "success",
-      comparison: {
-        aspect: [
-          { label: "Name", app1: app1.name, app2: app2.name },
-          { label: "Category", app1: app1.category, app2: app2.category },
-          { label: "Rating", app1: app1.rating?.avg_rating || "—", app2: app2.rating?.avg_rating || "—" },
-          { label: "Reviews", app1: app1.rating?.review_count || 0, app2: app2.rating?.review_count || 0 },
-          { label: "Size", app1: app1.app_size || "—", app2: app2.app_size || "—" },
-          { label: "Downloads", app1: app1.downloads || "—", app2: app2.downloads || "—" },
-          { label: "Security Score", app1: app1.security_score || "?", app2: app2.security_score || "?" }
-        ]
+      app1: {
+        name: app1.name,
+        category: app1.category,
+        description: app1.description,
+        size: app1.app_size || "—",
+        downloads: app1.downloads || "—"
+      },
+      app2: {
+        name: app2.name,
+        category: app2.category,
+        description: app2.description,
+        size: app2.app_size || "—",
+        downloads: app2.downloads || "—"
       }
     };
   }
 
-  // ===================== APK ANALYSIS =====================
-  async analyzeAPK(appId) {
-    const app = this.appsCache.find(a => a.id === appId);
-    if (!app) return { status: "error" };
+  // ===================== RECOMMENDATION ENGINE =====================
+  async getRecommendations(categories = []) {
+    let recommendations = this.appsCache.slice();
 
-    // Fetch detailed APK analysis
-    const { data: details } = await supabaseClient
-      .from("apps")
-      .select("permissions, security_score, security_warnings, malware_scan")
-      .eq("id", appId)
-      .single();
+    if (categories?.length) {
+      recommendations = recommendations.filter(app =>
+        categories.includes(app.category)
+      );
+    }
+
+    // Sort by popularity (assuming app_size as proxy for downloads)
+    recommendations.sort((a, b) => {
+      const aScore = (a.downloads || "0").split("M")[0] * 1 || 0;
+      const bScore = (b.downloads || "0").split("M")[0] * 1 || 0;
+      return bScore - aScore;
+    });
+
+    return recommendations.slice(0, 5);
+  }
+
+  // ===================== MESSAGE HANDLING =====================
+  async handleUserMessage(userMessage) {
+    this.isLoading = true;
+
+    try {
+      // Add to history
+      this.chatHistory.push({
+        type: "user",
+        text: userMessage,
+        timestamp: new Date()
+      });
+
+      // Process
+      const language = this.detectLanguage(userMessage);
+      const intent = this.recognizeIntent(userMessage);
+      const entities = this.extractEntities(userMessage);
+
+      let response;
+
+      switch (intent) {
+        case "SEARCH":
+          const query = entities.keywords.join(" ") || userMessage;
+          const results = await this.searchApps(query);
+          response = this.buildSearchResponse(results);
+          break;
+
+        case "COMPARE":
+          if (entities.appNames.length >= 2) {
+            const comp = this.compareApps(entities.appNames[0].id, entities.appNames[1].id);
+            response = this.buildComparisonResponse(comp);
+          } else {
+            response = {
+              text: "২টি app এর নাম বলুন তুলনা করতে।",
+              html: null
+            };
+          }
+          break;
+
+        case "SECURITY":
+          if (entities.appNames.length) {
+            response = this.buildSecurityResponse(entities.appNames[0].name);
+          } else {
+            response = {
+              text: "কোন app এর নিরাপত্তা জানতে চান? নাম বলুন।",
+              html: null
+            };
+          }
+          break;
+
+        case "RECOMMEND":
+          const recs = await this.getRecommendations(entities.categories);
+          response = this.buildRecommendationResponse(recs);
+          break;
+
+        case "CATEGORY":
+          response = this.buildCategoryResponse(this.allCategories);
+          break;
+
+        case "TRENDING":
+          const trending = this.appsCache.slice(0, 5);
+          response = this.buildSearchResponse({ apps: trending, total: trending.length });
+          break;
+
+        case "GREETING":
+          response = {
+            text: "🤖 MRZN AI Assistant এ স্বাগতম! কোন app খুঁজছেন? (example: 'ফটো এডিটর', 'ভিপিএন compare করো')",
+            html: null
+          };
+          break;
+
+        case "HELP":
+          response = {
+            text: `📱 আমি এই কাজ করতে পারি:
+            • 🔍 App খুঁজুন: "ভালো photo editor"
+            • ⚖️ তুলনা করুন: "Photoshop vs VSCO"
+            • 🛡️ নিরাপত্তা: "VPN safe?"
+            • 💡 সুপারিশ: "games recommend করো"
+            • 📂 ক্যাটেগরি: "সব categories দেখাও"`,
+            html: null
+          };
+          break;
+
+        default:
+          response = {
+            text: "🤔 বুঝতে পারছি না। কোন app খুঁজছেন বা সাহায্য চান?",
+            html: null
+          };
+      }
+
+      // Add bot response to history
+      this.chatHistory.push({
+        type: "bot",
+        text: response.text,
+        html: response.html,
+        timestamp: new Date()
+      });
+
+      return response;
+
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // ===================== RESPONSE BUILDERS =====================
+  buildSearchResponse(results) {
+    if (!results.apps?.length) {
+      return {
+        text: "❌ কোনো app পাওয়া যায়নি। অন্য নাম দিয়ে চেষ্টা করুন।",
+        html: null
+      };
+    }
+
+    const cards = results.apps.map(app => `
+      <div class="ai-app-card">
+        <img src="${escapeHTML(app.icon_url || 'assets/placeholder-icon.svg')}" class="ai-app-icon" onerror="this.style.opacity=0">
+        <div class="ai-app-info">
+          <div class="ai-app-name">${escapeHTML(app.name)}</div>
+          <div class="ai-app-category">${escapeHTML(app.category)}</div>
+          <div class="ai-app-desc">${escapeHTML(app.description)}</div>
+          ${app.app_size ? `<span class="ai-badge">📦 ${escapeHTML(app.app_size)}</span>` : ''}
+          ${app.downloads ? `<span class="ai-badge">⬇️ ${escapeHTML(app.downloads)}</span>` : ''}
+          <a href="app.html?id=${app.id}" class="btn btn-sm" style="margin-top:8px">বিস্তারিত</a>
+        </div>
+      </div>
+    `).join("");
 
     return {
-      status: "success",
-      appName: app.name,
-      analysis: {
-        permissions: details?.permissions || [],
-        securityScore: details?.security_score || 0,
-        warnings: details?.security_warnings || [],
-        malwareScan: details?.malware_scan || "Not scanned",
-        assessment: this.assessSecurity(details?.security_score || 0)
-      }
+      text: `✅ ${results.apps.length} টি app পাওয়া গেছে:`,
+      html: `<div class="ai-search-results">${cards}</div>`
     };
   }
 
-  assessSecurity(score) {
-    if (score >= 90) return "🟢 Very Safe";
-    if (score >= 70) return "🟡 Generally Safe";
-    if (score >= 50) return "🟠 Caution Advised";
-    return "🔴 High Risk - Review Carefully";
-  }
-
-  // ===================== RESPONSE FORMATTING =====================
-  formatResponse(type, data) {
-    switch (type) {
-      case "SEARCH_RESULTS":
-        return this.formatSearchResults(data);
-      case "COMPARISON":
-        return this.formatComparison(data);
-      case "APK_ANALYSIS":
-        return this.formatAPKAnalysis(data);
-      case "RECOMMENDATION":
-        return this.formatRecommendation(data);
-      default:
-        return JSON.stringify(data);
-    }
-  }
-
-  formatSearchResults(results) {
-    if (!results.apps.length) {
-      return `❌ কোনো app পাওয়া যায়নি। অন্য নাম দিয়ে search করুন।`;
+  buildComparisonResponse(comparison) {
+    if (comparison.status !== "success") {
+      return { text: "❌ তুলনা করতে পারছি না।", html: null };
     }
 
-    let html = `<div class="ai-search-results">`;
-    results.apps.forEach((app, i) => {
-      html += `
-        <div class="ai-app-card">
-          <img src="${app.icon_url}" class="ai-app-icon">
-          <div class="ai-app-info">
-            <div class="ai-app-name">${app.name}</div>
-            <div class="ai-app-category">${app.category}</div>
-            <div class="ai-app-rating">
-              ⭐ ${app.rating?.avg_rating || "—"} (${app.rating?.review_count || 0} reviews)
-            </div>
-            <div class="ai-app-desc">${app.description}</div>
-            <button onclick="window.location.href='app.html?id=${app.id}'" class="btn btn-sm">Details</button>
-          </div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-    return html;
-  }
-
-  formatComparison(comparison) {
-    if (comparison.status !== "success") return comparison.message;
-    
-    let html = `<div class="ai-comparison-table">
-      <table>
-        <tr>
-          <th>Aspect</th>
-          <th>App 1</th>
-          <th>App 2</th>
-        </tr>`;
-    
-    comparison.comparison.aspect.forEach(row => {
-      html += `
-        <tr>
-          <td>${row.label}</td>
-          <td>${row.app1}</td>
-          <td>${row.app2}</td>
-        </tr>
-      `;
-    });
-    html += `</table></div>`;
-    return html;
-  }
-
-  formatAPKAnalysis(analysis) {
-    if (analysis.status !== "success") return "APK analysis not available";
-    
-    return `
-      <div class="ai-apk-analysis">
-        <h4>${analysis.appName}</h4>
-        <p><strong>Security Assessment:</strong> ${analysis.analysis.assessment}</p>
-        <p><strong>Security Score:</strong> ${analysis.analysis.securityScore}/100</p>
-        <p><strong>Permissions:</strong></p>
-        <ul>
-          ${analysis.analysis.permissions.map(p => `<li>📌 ${p}</li>`).join("")}
-        </ul>
-        <p><strong>Warnings:</strong></p>
-        ${analysis.analysis.warnings.length ? 
-          `<ul>${analysis.analysis.warnings.map(w => `<li>⚠️ ${w}</li>`).join("")}</ul>` 
-          : "<p>No warnings detected</p>"
-        }
+    const html = `
+      <div class="ai-comparison">
+        <table class="ai-comp-table">
+          <tr>
+            <th>বৈশিষ্ট্য</th>
+            <th>${escapeHTML(comparison.app1.name)}</th>
+            <th>${escapeHTML(comparison.app2.name)}</th>
+          </tr>
+          <tr>
+            <td>ক্যাটেগরি</td>
+            <td>${escapeHTML(comparison.app1.category)}</td>
+            <td>${escapeHTML(comparison.app2.category)}</td>
+          </tr>
+          <tr>
+            <td>আকার</td>
+            <td>${escapeHTML(comparison.app1.size)}</td>
+            <td>${escapeHTML(comparison.app2.size)}</td>
+          </tr>
+          <tr>
+            <td>ডাউনলোড</td>
+            <td>${escapeHTML(comparison.app1.downloads)}</td>
+            <td>${escapeHTML(comparison.app2.downloads)}</td>
+          </tr>
+        </table>
       </div>
     `;
+
+    return {
+      text: `⚖️ ${comparison.app1.name} vs ${comparison.app2.name}:`,
+      html
+    };
   }
 
-  formatRecommendation(apps) {
-    let html = `<div class="ai-recommendations"><p>📱 আপনার জন্য সুপারিশ:</p><ul>`;
-    apps.forEach(app => {
-      html += `<li><strong>${app.name}</strong> (${app.category}) - ⭐ ${app.rating?.avg_rating || "—"}</li>`;
-    });
-    html += `</ul></div>`;
-    return html;
+  buildSecurityResponse(appName) {
+    return {
+      text: `🛡️ ${escapeHTML(appName)} এর নিরাপত্তা তথ্যের জন্য বিস্তারিত পাতায় যান।`,
+      html: null
+    };
   }
 
-  // ===================== MESSAGE HANDLER =====================
-  async handleUserMessage(userMessage) {
-    // Add to chat history
-    this.chatHistory.push({
-      type: "user",
-      message: userMessage,
-      timestamp: new Date()
-    });
-
-    // Detect language
-    const language = this.detectLanguage(userMessage);
-
-    // Recognize intent
-    const intent = this.recognizeIntent(userMessage);
-
-    // Extract entities
-    const entities = this.extractEntities(userMessage);
-
-    // Process based on intent
-    let response;
-    switch (intent) {
-      case "SEARCH":
-        const query = entities.keywords.join(" ") || userMessage;
-        const searchResults = await this.searchApps(query);
-        response = {
-          text: `${searchResults.apps.length} apps পাওয়া গেছে:`,
-          html: this.formatResponse("SEARCH_RESULTS", searchResults),
-          metadata: searchResults
-        };
-        break;
-
-      case "COMPARE":
-        if (entities.appNames.length >= 2) {
-          const comparison = this.compareApps(
-            entities.appNames[0].id,
-            entities.appNames[1].id
-          );
-          response = {
-            text: `${entities.appNames[0].name} vs ${entities.appNames[1].name} এর তুলনা:`,
-            html: this.formatResponse("COMPARISON", comparison)
-          };
-        } else {
-          response = {
-            text: "কমপক্ষে 2টি app এর নাম বলুন তুলনা করার জন্য।"
-          };
-        }
-        break;
-
-      case "SECURITY":
-        if (entities.appNames.length) {
-          const analysis = await this.analyzeAPK(entities.appNames[0].id);
-          response = {
-            text: `${entities.appNames[0].name} এর নিরাপত্তা বিশ্লেষণ:`,
-            html: this.formatResponse("APK_ANALYSIS", analysis)
-          };
-        } else {
-          response = {
-            text: "কোন app এর জন্য নিরাপত্তা তথ্য চান? App এর নাম বলুন।"
-          };
-        }
-        break;
-
-      case "RECOMMEND":
-        this.userPreferences.favoriteCategories = entities.categories;
-        const recommendations = await this.getRecommendations(this.userPreferences);
-        response = {
-          text: "আপনার পছন্দ অনুযায়ী:",
-          html: this.formatResponse("RECOMMENDATION", recommendations)
-        };
-        break;
-
-      case "BROWSE":
-        if (entities.categories.length) {
-          const categoryApps = this.appsCache.filter(a => 
-            entities.categories.includes(a.category)
-          );
-          response = {
-            text: `${entities.categories[0]} category-এ ${categoryApps.length}টি app আছে।`,
-            html: this.formatResponse("SEARCH_RESULTS", { apps: categoryApps.slice(0, 5) })
-          };
-        }
-        break;
-
-      default:
-        response = {
-          text: "আমি শুধু apps/games সম্পর্কিত প্রশ্নের উত্তর দিতে পারি। কোন app খুঁজছেন?"
-        };
+  buildRecommendationResponse(apps) {
+    if (!apps.length) {
+      return {
+        text: "দুঃখিত, কোনো সুপারিশ পাওয়া যায়নি।",
+        html: null
+      };
     }
 
-    // Add bot response to history
-    this.chatHistory.push({
-      type: "assistant",
-      message: response.text,
-      html: response.html,
-      timestamp: new Date(),
-      metadata: response.metadata
-    });
+    const list = apps.map((app, i) => `
+      <li>
+        <strong>${i + 1}. ${escapeHTML(app.name)}</strong> 
+        <span style="color:var(--text-faint)">(${escapeHTML(app.category)})</span>
+      </li>
+    `).join("");
 
-    return response;
+    return {
+      text: "📱 আপনার জন্য সুপারিশ:",
+      html: `<ul class="ai-recommendations">${list}</ul>`
+    };
   }
 
-  // ===================== CHAT HISTORY =====================
+  buildCategoryResponse(categories) {
+    const list = categories.map(cat => 
+      `<li><a href="#" onclick="return false;" style="color:var(--cyan)">${escapeHTML(cat)}</a></li>`
+    ).join("");
+
+    return {
+      text: "📂 সব ক্যাটেগরি:",
+      html: `<ul style="margin:10px 0 10px 20px;">${list}</ul>`
+    };
+  }
+
+  // ===================== UTILITY =====================
+  logDebug(msg) {
+    console.log(`[MRZN AI] ${msg}`);
+  }
+
   getChatHistory() {
-    return this.chatHistory; // Session-only, not persisted
+    return this.chatHistory;
   }
 
   clearHistory() {
@@ -493,10 +510,105 @@ class MRZNAssistant {
   }
 }
 
-// ==================== GLOBAL INSTANCE ====================
-let mrzn_ai_assistant = null;
+// ===================== GLOBAL INSTANCE =====================
+let mrzn_assistant = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  mrzn_ai_assistant = new MRZNAssistant();
-  await mrzn_ai_assistant.initialize();
+  mrzn_assistant = new MRZNAssistant();
+  await mrzn_assistant.initialize();
+  setupAssistantUI();
 });
+
+// ===================== UI SETUP =====================
+function setupAssistantUI() {
+  const toggle = document.getElementById("helper-bot-toggle");
+  const panel = document.getElementById("helper-bot-panel");
+  const closeBtn = document.getElementById("helper-bot-close");
+  const input = document.getElementById("helper-bot-input");
+  const log = document.getElementById("helper-bot-log");
+  const sendBtn = document.getElementById("helper-bot-send");
+
+  if (!toggle || !panel) return;
+
+  // Open
+  toggle.addEventListener("click", () => {
+    panel.style.display = "flex";
+    input.focus();
+  });
+
+  // Close
+  closeBtn?.addEventListener("click", () => {
+    panel.style.display = "none";
+  });
+
+  // Send message
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text || mrzn_assistant.isLoading) return;
+
+    input.value = "";
+
+    // User message
+    addMessageBubble(text, "user");
+
+    // Bot response
+    sendBtn.disabled = true;
+    sendBtn.textContent = "চিন্তা করছি...";
+
+    try {
+      const response = await mrzn_assistant.handleUserMessage(text);
+      addMessageBubble(response.text, "bot");
+      if (response.html) {
+        addHTMLBubble(response.html, "bot");
+      }
+    } catch (err) {
+      addMessageBubble("❌ ত্রুটি! আবার চেষ্টা করুন।", "bot");
+      console.error(err);
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "পাঠান";
+      input.focus();
+    }
+  }
+
+  function addMessageBubble(text, type) {
+    const bubble = document.createElement("div");
+    bubble.style.cssText = `
+      max-width:80%; margin:8px 0; padding:11px 15px; border-radius:14px;
+      font-size:14px; line-height:1.6;
+      ${type === "bot"
+        ? "background:var(--panel-2); color:var(--text); align-self:flex-start; border-bottom-left-radius:3px;"
+        : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto; border-bottom-right-radius:3px;"}
+    `;
+    bubble.textContent = text;
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function addHTMLBubble(html, type) {
+    const bubble = document.createElement("div");
+    bubble.style.cssText = `
+      max-width:95%; margin:8px 0; align-self:${type === "bot" ? "flex-start" : "flex-end"};
+    `;
+    bubble.innerHTML = html;
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+
+  // Welcome
+  addMessageBubble("🤖 MRZN AI এসিস্ট্যান্ট! কোন app খুঁজছেন?", "bot");
+}
+
+// Export for external access
+window.openAssistantPanel = function() {
+  const panel = document.getElementById("helper-bot-panel");
+  if (panel) {
+    panel.style.display = "flex";
+    document.getElementById("helper-bot-input")?.focus();
+  }
+};
