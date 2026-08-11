@@ -1,0 +1,27 @@
+name: Keep Supabase Alive
+
+# Runs automatically every 5 days so the free Supabase project never
+# gets auto-paused from inactivity. Also runs on demand from the
+# "Actions" tab if you want to trigger it manually.
+on:
+  schedule:
+    - cron: "0 6 */5 * *"   # every 5 days at 6:00 AM UTC
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase apps table
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://qweyjpqxvixyzoremhon.supabase.co/rest/v1/apps?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
+          echo "HTTP Status: $STATUS"
+
+          if [ "$STATUS" != "200" ]; then
+            exit 1
+          fi
+          
