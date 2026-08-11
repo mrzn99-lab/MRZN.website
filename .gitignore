@@ -1,0 +1,21 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies (NEVER add)
+node_modules/
+package.json
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
