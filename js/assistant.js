@@ -2,8 +2,7 @@
   =====================================================================
   MRZN AI ASSISTANT — 100% FREE (Groq API)
   - Completely free, unlimited requests
-  - No token limits
-  - Super fast
+  - No hardcoded API key (use environment variable)
   - Multilingual support
   =====================================================================
 */
@@ -11,13 +10,70 @@
 class FreeAIAssistant {
   constructor() {
     this.chatHistory = [];
-    this.groqApiKey = "GROQ_API_KEY"; // Free API key from groq.com
+    
+    // Get API key from environment or localStorage
+    // NEVER hardcode in source!
+    this.groqApiKey = this.getApiKey();
+    
     this.groqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     this.isLoading = false;
+    this.appsCache = null;
+  }
+
+  getApiKey() {
+    // Try environment first (for server-side)
+    if (typeof process !== 'undefined' && process.env?.GROQ_API_KEY) {
+      return process.env.GROQ_API_KEY;
+    }
+    
+    // Try localStorage (user can paste key on first visit)
+    const storedKey = localStorage.getItem('groq_api_key');
+    if (storedKey) return storedKey;
+    
+    // If no key, show setup modal
+    this.showApiKeySetup();
+    return null;
+  }
+
+  showApiKeySetup() {
+    const key = prompt(
+      `🔑 MRZN AI Assistant Setup\n\nএকটি free Groq API key প্রয়োজন:\n\n` +
+      `1. Go to: https://console.groq.com\n` +
+      `2. Create free account\n` +
+      `3. Get API key\n` +
+      `4. Paste below:\n\n` +
+      `(Example: gsk_xxx...)`
+    );
+    
+    if (key && key.startsWith('gsk_')) {
+      localStorage.setItem('groq_api_key', key);
+      this.groqApiKey = key;
+      alert('✅ API key saved!');
+    } else {
+      alert('❌ Invalid key format. Must start with "gsk_"');
+    }
   }
 
   async initialize() {
-    console.log("✅ Free AI Assistant initialized (Groq)");
+    try {
+      await this.loadAppsCatalog();
+      console.log("✅ AI Assistant initialized");
+    } catch (err) {
+      console.error("Init error:", err);
+    }
+  }
+
+  async loadAppsCatalog() {
+    try {
+      const { data } = await supabaseClient
+        .from("apps")
+        .select("id, name, category, description, app_size, downloads")
+        .limit(200);
+      
+      this.appsCache = data || [];
+    } catch (err) {
+      this.appsCache = [];
+    }
   }
 
   detectLanguage(text) {
@@ -31,30 +87,14 @@ class FreeAIAssistant {
     return "english";
   }
 
-  async getAppsContext() {
-    // Get apps from your Supabase (free tier)
-    try {
-      const { data } = await supabaseClient
-        .from("apps")
-        .select("name, category, description")
-        .limit(100);
-
-      if (!data?.length) return "";
-
-      const appsList = data
-        .map(app => `${app.name} (${app.category}): ${app.description}`)
-        .join("\n");
-
-      return `উপলব্ধ Apps:\n${appsList}`;
-    } catch (err) {
-      return "";
-    }
-  }
-
   async sendMessage(userMessage) {
     this.isLoading = true;
 
     try {
+      if (!this.groqApiKey) {
+        throw new Error("API key not configured. Click Setup first.");
+      }
+
       // Add to history
       this.chatHistory.push({
         role: "user",
@@ -62,23 +102,30 @@ class FreeAIAssistant {
       });
 
       // Get apps context
-      const appsContext = await this.getAppsContext();
+      let appsContext = "";
+      if (this.appsCache?.length) {
+        appsContext = this.appsCache
+          .slice(0, 50)
+          .map(app => `${app.name} (${app.category}): ${app.description}`)
+          .join("\n");
+      }
+
       const language = this.detectLanguage(userMessage);
 
-      // System prompt
       const systemPrompt = `আপনি MRZN Apps & Games এর একজন helpful AI assistant।
 
 আপনার দায়িত্ব:
-1. যেকোনো ভাষায় উত্তর দিন (Bengali, English, Hindi, Urdu, Banglish সবকিছু)
+1. যেকোনো ভাষায় উত্তর দিন (Bengali, English, Hindi, Urdu, Banglish)
 2. সবসময় সৎ এবং সঠিক তথ্য দিন
 3. Apps/Games সম্পর্কে সাহায্য করুন - সুপারিশ, তুলনা, বিবরণ
 4. প্রশ্নকারীর প্রশ্ন বুঝে উত্তর দিন (শুধু keyword search নয়)
 5. মজাদার এবং কথোপকথনমূলক হন
 6. যদি কোনো app না থাকে তো সৎভাবে বলুন
 
+উপলব্ধ Apps:
 ${appsContext}`;
 
-      // Call Groq API (completely free)
+      // Call Groq API
       const response = await fetch(this.groqApiUrl, {
         method: "POST",
         headers: {
@@ -86,20 +133,19 @@ ${appsContext}`;
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "mixtral-8x7b-32768", // Free, powerful model
+          model: "mixtral-8x7b-32768",
           messages: [
             { role: "system", content: systemPrompt },
             ...this.chatHistory
           ],
           temperature: 0.7,
-          max_tokens: 1024,
-          top_p: 1
+          max_tokens: 1024
         })
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || "API Error");
+        throw new Error(error.error?.message || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
@@ -118,9 +164,8 @@ ${appsContext}`;
       };
 
     } catch (err) {
-      console.error("Error:", err);
       return {
-        text: `❌ ত্রুটি: ${err.message}`,
+        text: `❌ Error: ${err.message}`,
         success: false
       };
     } finally {
@@ -157,43 +202,30 @@ function setupChatUI() {
 
   if (!toggle || !panel) return;
 
-  // Open panel
   toggle.addEventListener("click", () => {
     panel.style.display = "flex";
     input.focus();
   });
 
-  // Close panel
   closeBtn?.addEventListener("click", () => {
     panel.style.display = "none";
   });
 
-  // Send message
   async function sendMessage() {
     const text = input.value.trim();
     if (!text || aiAssistant.isLoading) return;
 
     input.value = "";
-
-    // Display user message
     addMessageBubble(text, "user");
 
-    // Show loading
     sendBtn.disabled = true;
     sendBtn.textContent = "চিন্তা করছি...";
 
     try {
-      // Get AI response
       const response = await aiAssistant.sendMessage(text);
-
-      if (response.success) {
-        addMessageBubble(response.text, "bot");
-      } else {
-        addMessageBubble(response.text, "bot");
-      }
-
+      addMessageBubble(response.text, "bot");
     } catch (err) {
-      addMessageBubble(`❌ কিছু ভুল হয়েছে: ${err.message}`, "bot");
+      addMessageBubble(`❌ Error: ${err.message}`, "bot");
     } finally {
       sendBtn.disabled = false;
       sendBtn.textContent = "পাঠান";
@@ -224,9 +256,8 @@ function setupChatUI() {
     }
   });
 
-  // Welcome
   addMessageBubble(
-    "🤖 MRZN AI Assistant!\n\n🎯 আপনি যেকোনো প্রশ্ন করতে পারেন:\n• Apps খুঁজুন\n• তুলনা করুন\n• সুপারিশ চান\n• যেকোনো বিষয়ে জিজ্ঞাসা করুন\n\n📱 বাংলা, English, Banglish - সব ভাষায় উত্তর পাবেন!",
+    "🤖 MRZN AI Assistant!\n\n🎯 যেকোনো প্রশ্ন করুন:\n• Apps খুঁজুন\n• তুলনা করুন\n• সুপারিশ চান\n• যেকোনো বিষয়\n\n📱 সব ভাষায় উত্তর পাবেন!",
     "bot"
   );
 }
