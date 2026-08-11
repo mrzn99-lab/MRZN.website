@@ -11,7 +11,7 @@
 class FreeAIAssistant {
   constructor() {
     this.chatHistory = [];
-    this.groqApiKey = "API_KEY"; // Free API key from groq.com
+    this.groqApiKey = "GROQ_API_KEY"; // Free API key from groq.com
     this.groqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
     this.isLoading = false;
   }
