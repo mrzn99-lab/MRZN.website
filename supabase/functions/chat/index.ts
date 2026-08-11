@@ -38,7 +38,7 @@ serve(async (req) => {
       {
         role: "system",
         content: `আপনি MRZN Apps & Games এর একজন helpful AI assistant।
-
+            
 আপনার দায়িত্ব:
 1. যেকোনো ভাষায় উত্তর দিন (Bengali, English, Hindi, Urdu, Banglish)
 2. সবসময় সৎ এবং সঠিক তথ্য দিন
@@ -66,7 +66,7 @@ serve(async (req) => {
       content: message
     });
 
-    // Call Groq API
+    // Call Groq API with NEW MODEL
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -74,7 +74,7 @@ serve(async (req) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        model: "llama-3.1-70b-versatile",
         messages: messages,
         temperature: 0.7,
         max_tokens: 1024
