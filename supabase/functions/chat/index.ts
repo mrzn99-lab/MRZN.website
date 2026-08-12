@@ -12,8 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { message, chatHistory = [] } = body;
+    const { message, chatHistory = [] } = await req.json();
 
     if (!message) {
       return new Response(
@@ -22,7 +21,8 @@ serve(async (req) => {
       );
     }
 
-    const GROQ_API_KEY = Deno.env.get("groq_api_key");
+    // GitHub Secrets থেকে Key পাবে
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
     if (!GROQ_API_KEY) {
       return new Response(
@@ -34,25 +34,11 @@ serve(async (req) => {
     const messages = [
       {
         role: "system",
-        content: `আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।`
-      }
+        content: "আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।"
+      },
+      ...chatHistory,
+      { role: "user", content: message }
     ];
-
-    if (Array.isArray(chatHistory)) {
-      for (const msg of chatHistory) {
-        if (msg.role && msg.content) {
-          messages.push({
-            role: msg.role,
-            content: msg.content
-          });
-        }
-      }
-    }
-
-    messages.push({
-      role: "user",
-      content: message
-    });
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -69,9 +55,8 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
       return new Response(
-        JSON.stringify({ error: `API error: ${errorText}`, success: false }),
+        JSON.stringify({ error: "API error", success: false }),
         { status: 500, headers: { "Access-Control-Allow-Origin": "*" } }
       );
     }
@@ -80,31 +65,14 @@ serve(async (req) => {
     const aiResponse = data.choices[0].message.content;
 
     return new Response(
-      JSON.stringify({
-        response: aiResponse,
-        success: true
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      }
+      JSON.stringify({ response: aiResponse, success: true }),
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
 
   } catch (error) {
     return new Response(
-      JSON.stringify({
-        error: error.message || "Unknown error",
-        success: false
-      }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
-      }
+      JSON.stringify({ error: error.message, success: false }),
+      { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   }
 });
