@@ -2,7 +2,7 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
-    this.apiUrl = "https://YOUR_PROJECT_ID.supabase.co/functions/v1/chat";
+    this.apiUrl = "https://qweyjpqxvixyzoremhon.supabase.co/functions/v1/chat";
   }
 
   async sendMessage(userMessage) {
