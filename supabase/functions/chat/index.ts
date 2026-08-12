@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 serve(async (req) => {
-  // CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
@@ -23,7 +22,6 @@ serve(async (req) => {
       );
     }
 
-    // Get API key from environment
     const GROQ_API_KEY = Deno.env.get("groq_api_key");
 
     if (!GROQ_API_KEY) {
@@ -33,22 +31,13 @@ serve(async (req) => {
       );
     }
 
-    // Prepare messages
     const messages = [
       {
         role: "system",
-        content: `আপনি MRZN Apps & Games এর একজন helpful AI assistant।
-            
-আপনার দায়িত্ব:
-1. যেকোনো ভাষায় উত্তর দিন (Bengali, English, Hindi, Urdu, Banglish)
-2. সবসময় সৎ এবং সঠিক তথ্য দিন
-3. Apps/Games সম্পর্কে সাহায্য করুন
-4. প্রশ্নকারীর প্রশ্ন বুঝে উত্তর দিন
-5. মজাদার এবং কথোপকথনমূলক হন`
+        content: `আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।`
       }
     ];
 
-    // Add chat history
     if (Array.isArray(chatHistory)) {
       for (const msg of chatHistory) {
         if (msg.role && msg.content) {
@@ -60,13 +49,11 @@ serve(async (req) => {
       }
     }
 
-    // Add current message
     messages.push({
       role: "user",
       content: message
     });
 
-    // Call Groq API with NEW MODEL
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -74,7 +61,7 @@ serve(async (req) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-70b-versatile",
         messages: messages,
         temperature: 0.7,
         max_tokens: 1024
@@ -84,7 +71,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       return new Response(
-        JSON.stringify({ error: `Groq API error: ${errorText}`, success: false }),
+        JSON.stringify({ error: `API error: ${errorText}`, success: false }),
         { status: 500, headers: { "Access-Control-Allow-Origin": "*" } }
       );
     }
@@ -106,7 +93,6 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Error:", error);
     return new Response(
       JSON.stringify({
         error: error.message || "Unknown error",
