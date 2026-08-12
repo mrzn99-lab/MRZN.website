@@ -2,7 +2,6 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
-    this.apiUrl = "https://qweyjpqxvixyzoremhon.supabase.co/functions/v1/chat";
   }
 
   async sendMessage(userMessage) {
@@ -11,7 +10,11 @@ class AIBot {
     try {
       this.chatHistory.push({ role: "user", content: userMessage });
 
-      const response = await fetch(this.apiUrl, {
+      // GitHub Actions থেকে Environment Variable পাবে
+      // কিন্তু frontend এ সরাসরি access করতে পারবে না
+      // তাই Supabase Function use করব
+
+      const response = await fetch("https://qweyjpqxvixyzoremhon.supabase.co/functions/v1/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -23,11 +26,9 @@ class AIBot {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-
       if (!data.success) throw new Error(data.error);
 
       this.chatHistory.push({ role: "assistant", content: data.response });
-
       return { text: data.response, success: true };
 
     } catch (err) {
