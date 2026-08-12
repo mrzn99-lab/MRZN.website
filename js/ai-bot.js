@@ -2,6 +2,8 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
+    // আপনার Groq key এখানে
+    this.groqKey = "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";
   }
 
   async sendMessage(userMessage) {
@@ -10,28 +12,43 @@ class AIBot {
     try {
       this.chatHistory.push({ role: "user", content: userMessage });
 
-      // GitHub Actions থেকে Environment Variable পাবে
-      // কিন্তু frontend এ সরাসরি access করতে পারবে না
-      // তাই Supabase Function use করব
-
-      const response = await fetch("https://qweyjpqxvixyzoremhon.supabase.co/functions/v1/chat", {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${this.groqKey}`,
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          message: userMessage,
-          chatHistory: this.chatHistory.slice(-5)
+          model: "llama-3.1-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content: "আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।"
+            },
+            ...this.chatHistory
+          ],
+          temperature: 0.7,
+          max_tokens: 1024
         })
       });
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Groq error: ${response.status}`);
+      }
 
       const data = await response.json();
-      if (!data.success) throw new Error(data.error);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Invalid response format");
+      }
 
-      this.chatHistory.push({ role: "assistant", content: data.response });
-      return { text: data.response, success: true };
+      const aiResponse = data.choices[0].message.content;
+      this.chatHistory.push({ role: "assistant", content: aiResponse });
+
+      return { text: aiResponse, success: true };
 
     } catch (err) {
+      console.error("Error:", err);
       return { text: `❌ Error: ${err.message}`, success: false };
     } finally {
       this.isLoading = false;
@@ -56,8 +73,14 @@ function setupBotUI() {
 
   if (!toggle) return;
 
-  toggle.addEventListener("click", () => panel.style.display = "flex");
-  closeBtn?.addEventListener("click", () => panel.style.display = "none");
+  toggle.addEventListener("click", () => {
+    panel.style.display = "flex";
+    input.focus();
+  });
+
+  closeBtn?.addEventListener("click", () => {
+    panel.style.display = "none";
+  });
 
   async function sendMessage() {
     const text = input.value.trim();
@@ -80,10 +103,10 @@ function setupBotUI() {
     const div = document.createElement("div");
     div.style.cssText = `
       max-width:80%; margin:8px 0; padding:11px 15px; border-radius:14px;
-      font-size:14px; word-break:break-word;
+      font-size:14px; line-height:1.6; word-break:break-word;
       ${type === "bot"
-        ? "background:var(--panel-2); color:var(--text); align-self:flex-start;"
-        : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto;"}
+        ? "background:var(--panel-2); color:var(--text); align-self:flex-start; border-bottom-left-radius:3px;"
+        : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto; border-bottom-right-radius:3px;"}
     `;
     div.textContent = text;
     log.appendChild(div);
