@@ -10,6 +10,9 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
