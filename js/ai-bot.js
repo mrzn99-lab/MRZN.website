@@ -2,7 +2,7 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
-    this.groqKey = "gsk_YOUR_KEY_HERE";
+    this.groqKey = "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";
   }
 
   async sendMessage(userMessage) {
