@@ -102,8 +102,8 @@ class AIBot {
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: messages,
-          max_tokens: 150,
-          temperature: 0.5
+          max_tokens: 512,
+          temperature: 0.7
         })
       });
 
