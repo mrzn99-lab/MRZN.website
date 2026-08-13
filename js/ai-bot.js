@@ -2,7 +2,7 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
-    // আপনার Groq key এখানে
+    // Termux এ যেই key ব্যবহার করছেন সেটাই বসান
     this.groqKey = "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";
   }
 
@@ -12,34 +12,43 @@ class AIBot {
     try {
       this.chatHistory.push({ role: "user", content: userMessage });
 
+      const requestBody = {
+        model: "llama-3.1-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: "আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।"
+          },
+          ...this.chatHistory
+        ],
+        temperature: 0.7,
+        max_tokens: 1024
+      };
+
+      console.log("Sending request...");
+
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.groqKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          model: "llama-3.1-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content: "আপনি MRZN Apps & Games এর AI assistant। যেকোনো ভাষায় সাহায্য করুন।"
-            },
-            ...this.chatHistory
-          ],
-          temperature: 0.7,
-          max_tokens: 1024
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
-        throw new Error(`Groq error: ${response.status}`);
+        const errorData = await response.json();
+        console.error("API Error:", errorData);
+        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      
+      console.log("API Response:", data);
+
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error("Invalid response format");
+        throw new Error("Invalid response from API");
       }
 
       const aiResponse = data.choices[0].message.content;
@@ -48,7 +57,7 @@ class AIBot {
       return { text: aiResponse, success: true };
 
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Full Error:", err);
       return { text: `❌ Error: ${err.message}`, success: false };
     } finally {
       this.isLoading = false;
@@ -59,6 +68,7 @@ class AIBot {
 let aiBot = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("Initializing AI Bot...");
   aiBot = new AIBot();
   setupBotUI();
 });
@@ -71,27 +81,39 @@ function setupBotUI() {
   const log = document.getElementById("helper-bot-log");
   const sendBtn = document.getElementById("helper-bot-send");
 
-  if (!toggle) return;
+  if (!toggle) {
+    console.error("Bot elements not found!");
+    return;
+  }
+
+  console.log("Bot UI setup starting...");
 
   toggle.addEventListener("click", () => {
     panel.style.display = "flex";
     input.focus();
+    console.log("Bot opened");
   });
 
   closeBtn?.addEventListener("click", () => {
     panel.style.display = "none";
+    console.log("Bot closed");
   });
 
   async function sendMessage() {
     const text = input.value.trim();
-    if (!text || aiBot.isLoading) return;
+    if (!text || aiBot.isLoading) {
+      console.log("Message blocked - empty or loading");
+      return;
+    }
 
+    console.log("Sending message:", text);
     input.value = "";
     addBubble(text, "user");
     sendBtn.disabled = true;
     sendBtn.textContent = "চিন্তা করছি...";
 
     const res = await aiBot.sendMessage(text);
+    console.log("Bot response:", res);
     addBubble(res.text, "bot");
 
     sendBtn.disabled = false;
@@ -122,4 +144,12 @@ function setupBotUI() {
   });
 
   addBubble("🤖 MRZN AI Assistant! যেকোনো প্রশ্ন করুন।", "bot");
+  console.log("Bot UI setup complete");
 }
+
+// Global function for testing
+window.testAIBot = async function() {
+  console.log("Testing AI Bot...");
+  const result = await aiBot.sendMessage("Hello");
+  console.log("Test result:", result);
+};
