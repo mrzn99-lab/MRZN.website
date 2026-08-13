@@ -2,157 +2,144 @@ class AIBot {
   constructor() {
     this.chatHistory = [];
     this.isLoading = false;
-    this.groqKey = "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";
     this.appsCache = [];
+    
+    // দুটি Groq API keys
+    this.groqKeys = [
+      "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", // Gmail 1 থেকে
+      "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"  // Gmail 2 থেকে
+    ];
+    
+    this.currentKeyIndex = 0;
+    this.messagesCount = 0;
+    this.maxMessagesPerDay = 20; // প্রতি ব্যবহারকারী প্রতি দিনে 20 messages
+    this.lastResetTime = new Date().getDate(); // Track day change
+  }
+
+  resetDailyLimitIfNeeded() {
+    const today = new Date().getDate();
+    if (today !== this.lastResetTime) {
+      this.messagesCount = 0;
+      this.lastResetTime = today;
+      console.log("Daily limit reset");
+    }
+  }
+
+  getNextKey() {
+    const key = this.groqKeys[this.currentKeyIndex];
+    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.groqKeys.length;
+    console.log(`Using API Key ${this.currentKeyIndex}`);
+    return key;
   }
 
   async loadAppsFromDatabase() {
     try {
-      if (!window.supabaseClient) {
-        console.error("Supabase client not available");
-        return;
-      }
-
-      const { data, error } = await window.supabaseClient
+      if (!window.supabaseClient) return;
+      const { data } = await window.supabaseClient
         .from("apps")
-        .select("id, name, category, description, icon_url, downloads, app_size")
+        .select("id, name, category, description")
         .limit(100);
-
-      if (error) {
-        console.error("Database error:", error);
-        return;
-      }
-
       if (data) {
         this.appsCache = data;
         console.log("Apps loaded:", this.appsCache.length);
       }
     } catch (err) {
-      console.error("Load error:", err);
+      console.error("DB error:", err);
     }
   }
 
   searchApps(query) {
-    if (!this.appsCache || this.appsCache.length === 0) {
-      return [];
-    }
-
-    return this.appsCache.filter(app => {
-      const name = (app.name || "").toLowerCase();
-      const category = (app.category || "").toLowerCase();
-      const desc = (app.description || "").toLowerCase();
-      const q = (query || "").toLowerCase();
-      
-      return name.includes(q) || category.includes(q) || desc.includes(q);
-    }).slice(0, 5);
+    if (!this.appsCache?.length) return [];
+    const q = query.toLowerCase();
+    return this.appsCache.filter(app => 
+      app.name?.toLowerCase().includes(q) ||
+      app.category?.toLowerCase().includes(q)
+    ).slice(0, 3);
   }
 
   async sendMessage(msg) {
     this.isLoading = true;
     try {
-      if (!msg || msg.trim().length === 0) {
-        return { text: "Please enter a message", success: false };
+      // Check daily limit
+      this.resetDailyLimitIfNeeded();
+      
+      if (this.messagesCount >= this.maxMessagesPerDay) {
+        return { 
+          text: `⚠️ Daily limit reached! (${this.messagesCount}/${this.maxMessagesPerDay})\nCome back tomorrow for more messages.`, 
+          success: false 
+        };
+      }
+
+      if (!msg?.trim()) {
+        return { text: "Type a message", success: false };
       }
 
       this.chatHistory.push({ role: "user", content: msg });
+      this.messagesCount++;
 
       const foundApps = this.searchApps(msg);
-      let appContext = "";
+      let appList = foundApps.length > 0 
+        ? "\n[Apps: " + foundApps.map(a => a.name).join(", ") + "]" 
+        : "";
 
-      if (foundApps && foundApps.length > 0) {
-        appContext = "\n\nApps found in our database:\n";
-        foundApps.forEach(app => {
-          appContext += `• ${app.name} (${app.category}): ${app.description}`;
-          if (app.downloads) appContext += ` | Downloads: ${app.downloads}`;
-          if (app.app_size) appContext += ` | Size: ${app.app_size}`;
-          appContext += "\n";
-        });
-      }
+      const messages = [
+        {
+          role: "system",
+          content: `MRZN AI: Search & show apps. Compare. Recommend. Never fake data.${appList}`
+        },
+        ...this.chatHistory.slice(-2)
+      ];
 
-      const systemPrompt = `আপনি MRZN Apps & Games ওয়েবসাইটের AI Assistant।
-
-আপনার দায়িত্ব:
-1. Apps/Games খুঁজে দেওয়া
-2. Category অনুযায়ী Apps/Games দেখানো
-3. নির্দিষ্ট App/Game-এর বিস্তারিত তথ্য দেওয়া
-4. দুই বা একাধিক App/Game তুলনা করা
-5. ব্যবহারকারীর প্রয়োজন অনুযায়ী App/Game recommend করা
-6. Rating/review সম্পর্কিত তথ্য দেওয়া
-7. App-এর permissions সম্পর্কে তথ্য দেওয়া
-8. App/APK-এর security সম্পর্কে সৎ assessment দেওয়া
-9. Trending/popular Apps/Games দেখানো
-10. APK analysis-এর ফলাফল ব্যাখ্যা করা
-11. Website-এর Apps/Games catalogue ব্যবহারকারীকে বুঝতে সাহায্য করা
-
-গুরুত্বপূর্ণ নিয়ম:
-1. কোনো App-এর তথ্য database-এ না থাকলে তথ্য বানাবেন না
-2. Unknown তথ্যের ক্ষেত্রে পরিষ্কারভাবে বলুন তথ্যটি পাওয়া যায়নি
-3. Security সম্পর্কে 100% safe দাবি করবেন না যদি নির্ভরযোগ্য scan না থাকে
-4. APK analysis-এর ফলাফল না থাকলে analysis হয়েছে বলে দাবি করবেন না
-5. Rating, downloads, size নিজে থেকে বানাবেন না
-6. ব্যবহারকারীর প্রশ্ন অস্পষ্ট হলে clarification চান
-7. Website-এর বাইরে থাকা Apps সম্পর্কে uncertainty উল্লেখ করুন
-8. ব্যবহারকারী কোনো নির্দিষ্ট App চাইলে আগে database-এর তথ্য ব্যবহার করুন
-9. একই প্রশ্ন বারবার করলে আগের context বিবেচনা করুন
-10. নিজের capability সম্পর্কে মিথ্যা দাবি করবেন না
-
-শুধুমাত্র Apps/Games সম্পর্কিত বিষয় নিয়ে কথা বলুন।
-ভাষা: Bengali/English - যে ভাষায় প্রশ্ন তাতে উত্তর দিন।${appContext}`;
-
-      const messageBody = {
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          ...this.chatHistory
-        ],
-        max_tokens: 1024,
-        temperature: 0.7
-      };
+      // Get next API key (rotate between two)
+      const groqKey = this.getNextKey();
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${this.groqKey}`,
+          "Authorization": `Bearer ${groqKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(messageBody)
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: messages,
+          max_tokens: 150,
+          temperature: 0.5
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorMsg = errorData?.error?.message || `HTTP ${response.status}`;
+        const err = await response.json();
+        const errorMsg = err.error?.message || "API Error";
+        console.error("API Error:", errorMsg);
+        
+        if (errorMsg.includes("rate limit")) {
+          return { 
+            text: "⚠️ API rate limit. Trying alternate key...", 
+            success: false 
+          };
+        }
+        
         throw new Error(errorMsg);
       }
 
-      const responseData = await response.json();
+      const data = await response.json();
 
-      if (!responseData) {
-        throw new Error("Empty response from API");
+      if (!data?.choices?.[0]?.message?.content) {
+        throw new Error("Invalid response");
       }
 
-      if (!Array.isArray(responseData.choices) || responseData.choices.length === 0) {
-        console.error("Invalid response structure:", responseData);
-        throw new Error("No choices in API response");
-      }
-
-      const firstChoice = responseData.choices[0];
-      if (!firstChoice.message || !firstChoice.message.content) {
-        console.error("Invalid message structure:", firstChoice);
-        throw new Error("No message content in response");
-      }
-
-      const reply = firstChoice.message.content;
+      const reply = data.choices[0].message.content;
       this.chatHistory.push({ role: "assistant", content: reply });
 
-      return { text: reply, success: true };
+      // Show remaining messages
+      const remaining = this.maxMessagesPerDay - this.messagesCount;
+      const messageInfo = remaining > 0 ? `\n\n📊 (${this.messagesCount}/${this.maxMessagesPerDay} - ${remaining} left today)` : "";
+
+      return { text: reply + messageInfo, success: true };
 
     } catch (error) {
       console.error("Error:", error);
-      const errorMsg = error?.message || "Unknown error occurred";
-      return { text: `❌ Error: ${errorMsg}`, success: false };
+      return { text: `❌ Error: ${error?.message || "Unknown error"}`, success: false };
     } finally {
       this.isLoading = false;
     }
@@ -161,8 +148,7 @@ class AIBot {
 
 let bot = null;
 
-document.addEventListener("DOMContentLoaded", async function() {
-  console.log("Initializing AI Bot...");
+document.addEventListener("DOMContentLoaded", async () => {
   bot = new AIBot();
   await bot.loadAppsFromDatabase();
   setupUI();
@@ -176,62 +162,56 @@ function setupUI() {
   const log = document.getElementById("helper-bot-log");
   const send = document.getElementById("helper-bot-send");
 
-  if (!toggle || !panel || !input || !send || !log) {
-    console.error("Bot UI elements not found");
-    return;
-  }
+  if (!toggle) return;
 
-  toggle.addEventListener("click", function() {
+  toggle.addEventListener("click", () => {
     panel.style.display = "flex";
     input.focus();
   });
 
-  close?.addEventListener("click", function() {
+  close?.addEventListener("click", () => {
     panel.style.display = "none";
   });
 
-  function sendMsg() {
+  const sendMsg = () => {
     const text = input.value.trim();
     if (!text || bot.isLoading) return;
 
     input.value = "";
     addMsg(text, "user");
     send.disabled = true;
-    send.textContent = "চিন্তা করছি...";
+    send.textContent = "Thinking...";
 
     bot.sendMessage(text).then(res => {
       addMsg(res.text, "bot");
       send.disabled = false;
-      send.textContent = "পাঠান";
+      send.textContent = "Send";
       input.focus();
     });
-  }
+  };
 
   send.addEventListener("click", sendMsg);
-  input.addEventListener("keydown", function(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
       e.preventDefault();
       sendMsg();
     }
   });
 
-  function addMsg(text, type) {
+  const addMsg = (text, type) => {
     if (!text) return;
-    
     const div = document.createElement("div");
-    const isBotMsg = type === "bot";
-    
     div.style.cssText = `
-      max-width:80%; margin:8px 0; padding:11px 15px; border-radius:14px;
-      font-size:14px; line-height:1.6; word-break:break-word;
-      ${isBotMsg
-        ? "background:var(--panel-2); color:var(--text); align-self:flex-start; border-bottom-left-radius:3px;"
-        : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto; border-bottom-right-radius:3px;"}
+      max-width:85%; margin:8px 0; padding:11px 15px; border-radius:14px;
+      font-size:14px; line-height:1.5; word-break:break-word;
+      ${type === "bot"
+        ? "background:var(--panel-2); color:var(--text); align-self:flex-start;"
+        : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto;"}
     `;
     div.textContent = text;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
-  }
+  };
 
-  addMsg("🤖 MRZN AI Assistant! আমাকে Apps/Games সম্পর্কে প্রশ্ন করুন। | Ask me about Apps & Games.", "bot");
+  addMsg("🤖 MRZN AI Assistant\n📊 20 messages/day limit\n🔄 Dual API powered", "bot");
 }
