@@ -4,16 +4,15 @@ class AIBot {
     this.isLoading = false;
     this.appsCache = [];
     
-    // দুটি Groq API keys
     this.groqKeys = [
-      "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", // Gmail 1 থেকে
-      "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"  // Gmail 2 থেকে
+      "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",
+      "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"
     ];
     
     this.currentKeyIndex = 0;
     this.messagesCount = 0;
-    this.maxMessagesPerDay = 20; // প্রতি ব্যবহারকারী প্রতি দিনে 20 messages
-    this.lastResetTime = new Date().getDate(); // Track day change
+    this.maxMessagesPerDay = 20;
+    this.lastResetTime = new Date().getDate();
   }
 
   resetDailyLimitIfNeeded() {
@@ -21,14 +20,12 @@ class AIBot {
     if (today !== this.lastResetTime) {
       this.messagesCount = 0;
       this.lastResetTime = today;
-      console.log("Daily limit reset");
     }
   }
 
   getNextKey() {
     const key = this.groqKeys[this.currentKeyIndex];
     this.currentKeyIndex = (this.currentKeyIndex + 1) % this.groqKeys.length;
-    console.log(`Using API Key ${this.currentKeyIndex}`);
     return key;
   }
 
@@ -39,10 +36,7 @@ class AIBot {
         .from("apps")
         .select("id, name, category, description")
         .limit(100);
-      if (data) {
-        this.appsCache = data;
-        console.log("Apps loaded:", this.appsCache.length);
-      }
+      if (data) this.appsCache = data;
     } catch (err) {
       console.error("DB error:", err);
     }
@@ -60,12 +54,11 @@ class AIBot {
   async sendMessage(msg) {
     this.isLoading = true;
     try {
-      // Check daily limit
       this.resetDailyLimitIfNeeded();
       
       if (this.messagesCount >= this.maxMessagesPerDay) {
         return { 
-          text: `⚠️ Daily limit reached! (${this.messagesCount}/${this.maxMessagesPerDay})\nCome back tomorrow for more messages.`, 
+          text: `⚠️ Daily limit reached (${this.maxMessagesPerDay}/20)\nTry again tomorrow!`, 
           success: false 
         };
       }
@@ -78,19 +71,28 @@ class AIBot {
       this.messagesCount++;
 
       const foundApps = this.searchApps(msg);
-      let appList = foundApps.length > 0 
-        ? "\n[Apps: " + foundApps.map(a => a.name).join(", ") + "]" 
-        : "";
+      let appContext = "";
+      if (foundApps.length > 0) {
+        appContext = "\n\nDatabase apps: " + foundApps.map(a => a.name).join(", ");
+      }
 
-      const messages = [
-        {
-          role: "system",
-          content: `MRZN AI: Search & show apps. Compare. Recommend. Never fake data.${appList}`
-        },
-        ...this.chatHistory.slice(-2)
+      // ULTRA-SHORT system prompt (save tokens!)
+      const systemMessage = `You are MRZN AI. Help with apps/games queries. Be honest. Never fake data. Keep answers concise but complete.${appContext}`;
+
+      // Only use LAST message in history (save tokens)
+      const messagesToSend = [
+        { role: "system", content: systemMessage },
+        { role: "user", content: msg }
       ];
 
-      // Get next API key (rotate between two)
+      // Add previous assistant response if exists
+      if (this.chatHistory.length > 2) {
+        messagesToSend.splice(1, 0, {
+          role: "assistant",
+          content: this.chatHistory[this.chatHistory.length - 2].content
+        });
+      }
+
       const groqKey = this.getNextKey();
 
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -101,25 +103,16 @@ class AIBot {
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
-          messages: messages,
-          max_tokens: 512,
-          temperature: 0.7
+          messages: messagesToSend,
+          max_tokens: 600,        // ✅ বড় করা
+          temperature: 0.7,
+          top_p: 0.9              // Better quality
         })
       });
 
       if (!response.ok) {
         const err = await response.json();
-        const errorMsg = err.error?.message || "API Error";
-        console.error("API Error:", errorMsg);
-        
-        if (errorMsg.includes("rate limit")) {
-          return { 
-            text: "⚠️ API rate limit. Trying alternate key...", 
-            success: false 
-          };
-        }
-        
-        throw new Error(errorMsg);
+        throw new Error(err.error?.message || "API Error");
       }
 
       const data = await response.json();
@@ -131,15 +124,16 @@ class AIBot {
       const reply = data.choices[0].message.content;
       this.chatHistory.push({ role: "assistant", content: reply });
 
-      // Show remaining messages
       const remaining = this.maxMessagesPerDay - this.messagesCount;
-      const messageInfo = remaining > 0 ? `\n\n📊 (${this.messagesCount}/${this.maxMessagesPerDay} - ${remaining} left today)` : "";
+      const counter = remaining > 0 
+        ? `\n\n📊 (${this.messagesCount}/${this.maxMessagesPerDay} msgs used - ${remaining} left)`
+        : "\n\n⚠️ Daily limit reached!";
 
-      return { text: reply + messageInfo, success: true };
+      return { text: reply + counter, success: true };
 
     } catch (error) {
       console.error("Error:", error);
-      return { text: `❌ Error: ${error?.message || "Unknown error"}`, success: false };
+      return { text: `❌ ${error?.message || "Error"}`, success: false };
     } finally {
       this.isLoading = false;
     }
@@ -203,7 +197,7 @@ function setupUI() {
     const div = document.createElement("div");
     div.style.cssText = `
       max-width:85%; margin:8px 0; padding:11px 15px; border-radius:14px;
-      font-size:14px; line-height:1.5; word-break:break-word;
+      font-size:14px; line-height:1.6; word-break:break-word;
       ${type === "bot"
         ? "background:var(--panel-2); color:var(--text); align-self:flex-start;"
         : "background:linear-gradient(135deg,var(--cyan),var(--violet)); color:var(--void); align-self:flex-end; margin-left:auto;"}
@@ -213,5 +207,5 @@ function setupUI() {
     log.scrollTop = log.scrollHeight;
   };
 
-  addMsg("🤖 MRZN AI Assistant\n📊 20 messages/day limit\n🔄 Dual API powered", "bot");
+  addMsg("🤖 MRZN AI Assistant\n📊 20 messages/day\n🔄 Dual API", "bot");
 }
