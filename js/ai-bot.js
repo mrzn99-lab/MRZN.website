@@ -5,8 +5,8 @@ class AIBot {
     this.appsCache = [];
     
     this.groqKeys = [
-      "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",
-      "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"
+      "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",
+      "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"
     ];
     
     this.currentKeyIndex = 0;
@@ -77,7 +77,7 @@ class AIBot {
       }
 
       // ULTRA-SHORT system prompt (save tokens!)
-      const systemMessage = `You are MRZN AI. Help with apps/games queries. Be honest. Never fake data. Keep answers concise but complete.${appContext}`;
+      const systemMessage = `You are MRZN AI. Help with only apps/games queries. Be honest. Never fake data. Keep answers concise but complete.${appContext}`;
 
       // Only use LAST message in history (save tokens)
       const messagesToSend = [
@@ -208,4 +208,4 @@ function setupUI() {
   };
 
   addMsg("🤖 MRZN AI Assistant\n📊 20 messages/day\n🔄 Dual API", "bot");
-}
+      }
