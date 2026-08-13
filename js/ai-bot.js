@@ -13,7 +13,7 @@ class AIBot {
       this.chatHistory.push({ role: "user", content: userMessage });
 
       const requestBody = {
-        model: "llama-3.1-70b-versatile",
+        model: "mixtral-8x7b-32768",
         messages: [
           {
             role: "system",
