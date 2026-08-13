@@ -39,7 +39,7 @@ class AIBot {
     try {
       this.chatHistory.push({ role: "user", content: msg });
       
-      // Search database first
+      // Search database
       const foundApps = this.searchApps(msg);
       let appContext = "";
       
@@ -50,33 +50,12 @@ class AIBot {
         });
       }
       
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${this.groqKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content: `You are MRZN Apps & Games AI Assistant.
-
-Database Apps Available:
-${this.appsCache.map(a => `- ${a.name} (${a.category}): ${a.description}`).join("\n")}
-
-Your responsibilities:
-1. Search and show apps from MRZN database
-2. Show apps by category
-3. Provide app details (ratings, downloads, size)
-4. Compare apps
-5. Recommend apps
-6. Never make up app data
-7. Only discuss apps from our database
-8. Be honest if app not in database
-আরো দায়িত্ব,,
-1. Apps/Games খুঁজে দেওয়া
+      const requestBody = {
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: `You are MRZN Apps & Games AI Assistant. Only discuss apps and games. Never make up data. Be honest.1. Apps/Games খুঁজে দেওয়া
 2. Category অনুযায়ী Apps/Games দেখানো
 3. নির্দিষ্ট App/Game-এর বিস্তারিত তথ্য দেওয়া
 4. দুই বা একাধিক App/Game তুলনা করা
@@ -102,22 +81,47 @@ Your responsibilities:
 
 শুধুমাত্র Apps/Games সম্পর্কিত বিষয় নিয়ে কথা বলুন। অন্য কোনো নতুন টপিক আনবেন না।
 
-ভাষা:all
+ভাষা: বাংলা, English, Banglish - যে ভাষায় প্রশ্ন আসে সেই ভাষায় উত্তর দিন।`
+          ${appContext}`
+          },
+          ...this.chatHistory
+        ],
+        max_tokens: 1024
+      };
 
+      console.log("Sending request...");
 
-Respond in Bengali/English/Banglish based on user's language.${appContext}`
-            },
-            ...this.chatHistory
-          ],
-          max_tokens: 1024
-        })
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.groqKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
       });
 
+      console.log("Status:", res.status);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error:", errorData);
+        throw new Error(errorData.error?.message || "API Error");
+      }
+
       const data = await res.json();
+      console.log("Response:", data);
+
+      if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error("Invalid response structure:", data);
+        throw new Error("Invalid API response");
+      }
+
       const reply = data.choices[0].message.content;
       this.chatHistory.push({ role: "assistant", content: reply });
       return { text: reply, success: true };
+
     } catch (err) {
+      console.error("Full error:", err);
       return { text: "❌ Error: " + err.message, success: false };
     } finally {
       this.isLoading = false;
@@ -188,5 +192,5 @@ function setupUI() {
     log.scrollTop = log.scrollHeight;
   }
 
-  addMsg("🤖 MRZN AI Assistant! Ask me about Apps & Games from our database.", "bot");
-}
+  addMsg("🤖 MRZN AI! Ask about Apps & Games.", "bot");
+  }
