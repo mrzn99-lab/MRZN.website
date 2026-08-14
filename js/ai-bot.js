@@ -5,13 +5,13 @@ class AIBot {
     this.appsCache = [];
     
     this.groqKeys = [
-      "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",
-      "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"
+      "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",
+      "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"
     ];
     
     this.currentKeyIndex = 0;
     this.messagesCount = 0;
-    this.maxMessagesPerDay = 20;
+    this.maxMessagesPerDay = 7;    // ✅ Changed to 7 (was 10)
     this.lastResetTime = new Date().getDate();
   }
 
@@ -58,7 +58,7 @@ class AIBot {
       
       if (this.messagesCount >= this.maxMessagesPerDay) {
         return { 
-          text: `Daily limit reached. Try tomorrow!`, 
+          text: `Daily limit reached (${this.maxMessagesPerDay} messages/day). Try again tomorrow!`, 
           success: false 
         };
       }
@@ -71,13 +71,13 @@ class AIBot {
 
       const foundApps = this.searchApps(msg);
       let appInfo = foundApps.length > 0 
-        ? "\nApps: " + foundApps.map(a => a.name).join(", ")
+        ? "\nApps found: " + foundApps.map(a => a.name).join(", ")
         : "";
 
       const messages = [
         {
           role: "system",
-          content: `MRZN AI. Help with apps. Honest. Clear answers. End properly.${appInfo}`
+          content: `MRZN AI assistant. Provide complete, detailed answers (3-4 paragraphs). Be thorough and informative.${appInfo}`
         },
         {
           role: "user",
@@ -96,7 +96,7 @@ class AIBot {
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: messages,
-          max_tokens: 700,         // ✅ Optimal - not too high
+          max_tokens: 800,         // ✅ Full answers
           temperature: 0.7,
           top_p: 0.95
         })
@@ -116,16 +116,11 @@ class AIBot {
       const reply = data.choices[0].message.content;
       const finishReason = data.choices[0].finish_reason;
       
-      console.log("Finish reason:", finishReason);
+      console.log(`Finish: ${finishReason}`);
 
-      // Check if response was truncated
       let finalReply = reply;
       if (finishReason === "length") {
-        // Response was cut off
-        finalReply = reply + "\n\n[Response truncated due to length]";
-      } else if (finishReason === "stop") {
-        // Response completed properly
-        console.log("Response complete");
+        finalReply = reply + "\n\n[Response trimmed - ask for more details]";
       }
       
       const remaining = this.maxMessagesPerDay - this.messagesCount;
@@ -133,7 +128,7 @@ class AIBot {
       return { 
         text: finalReply, 
         success: true,
-        counter: `(${this.messagesCount}/${this.maxMessagesPerDay})`
+        counter: `(${this.messagesCount}/${this.maxMessagesPerDay} - ${remaining} left)`
       };
 
     } catch (error) {
@@ -222,5 +217,5 @@ function setupUI() {
     log.scrollTop = log.scrollHeight;
   };
 
-  addMsg("🤖 MRZN AI", "bot");
+  addMsg("🤖 MRZN AI | 7 msgs/day | Full Answers", "bot");
 }
