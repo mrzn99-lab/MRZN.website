@@ -5,7 +5,7 @@ class AIBot {
     this.appsCache = [];
     
     this.groqKeys = [
-      "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",
+      "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",
       "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"
     ];
     
