@@ -5,8 +5,8 @@ class AIBot {
     this.appsCache = [];
     
     this.groqKeys = [
-      "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",
-      "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"
+      "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",
+      "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"
     ];
     
     this.currentKeyIndex = 0;
@@ -58,7 +58,7 @@ class AIBot {
       
       if (this.messagesCount >= this.maxMessagesPerDay) {
         return { 
-          text: `⚠️ Daily limit reached (${this.maxMessagesPerDay}/20)\nTry again tomorrow!`, 
+          text: `Daily limit reached. Try tomorrow!`, 
           success: false 
         };
       }
@@ -67,31 +67,23 @@ class AIBot {
         return { text: "Type a message", success: false };
       }
 
-      this.chatHistory.push({ role: "user", content: msg });
       this.messagesCount++;
 
       const foundApps = this.searchApps(msg);
-      let appContext = "";
-      if (foundApps.length > 0) {
-        appContext = "\n\nDatabase apps: " + foundApps.map(a => a.name).join(", ");
-      }
+      let appInfo = foundApps.length > 0 
+        ? "\nApps: " + foundApps.map(a => a.name).join(", ")
+        : "";
 
-      // ULTRA-SHORT system prompt (save tokens!)
-      const systemMessage = `You are MRZN AI. Help with only apps/games queries. Be honest. Never fake data. Keep answers concise but complete.${appContext}`;
-
-      // Only use LAST message in history (save tokens)
-      const messagesToSend = [
-        { role: "system", content: systemMessage },
-        { role: "user", content: msg }
+      const messages = [
+        {
+          role: "system",
+          content: `MRZN AI. Help with apps. Honest. Clear answers. End properly.${appInfo}`
+        },
+        {
+          role: "user",
+          content: msg
+        }
       ];
-
-      // Add previous assistant response if exists
-      if (this.chatHistory.length > 2) {
-        messagesToSend.splice(1, 0, {
-          role: "assistant",
-          content: this.chatHistory[this.chatHistory.length - 2].content
-        });
-      }
 
       const groqKey = this.getNextKey();
 
@@ -103,10 +95,10 @@ class AIBot {
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
-          messages: messagesToSend,
-          max_tokens: 600,        // ✅ বড় করা
+          messages: messages,
+          max_tokens: 700,         // ✅ Optimal - not too high
           temperature: 0.7,
-          top_p: 0.9              // Better quality
+          top_p: 0.95
         })
       });
 
@@ -122,18 +114,31 @@ class AIBot {
       }
 
       const reply = data.choices[0].message.content;
-      this.chatHistory.push({ role: "assistant", content: reply });
+      const finishReason = data.choices[0].finish_reason;
+      
+      console.log("Finish reason:", finishReason);
 
+      // Check if response was truncated
+      let finalReply = reply;
+      if (finishReason === "length") {
+        // Response was cut off
+        finalReply = reply + "\n\n[Response truncated due to length]";
+      } else if (finishReason === "stop") {
+        // Response completed properly
+        console.log("Response complete");
+      }
+      
       const remaining = this.maxMessagesPerDay - this.messagesCount;
-      const counter = remaining > 0 
-        ? `\n\n📊 (${this.messagesCount}/${this.maxMessagesPerDay} msgs used - ${remaining} left)`
-        : "\n\n⚠️ Daily limit reached!";
 
-      return { text: reply + counter, success: true };
+      return { 
+        text: finalReply, 
+        success: true,
+        counter: `(${this.messagesCount}/${this.maxMessagesPerDay})`
+      };
 
     } catch (error) {
       console.error("Error:", error);
-      return { text: `❌ ${error?.message || "Error"}`, success: false };
+      return { text: `❌ ${error?.message}`, success: false };
     } finally {
       this.isLoading = false;
     }
@@ -178,9 +183,19 @@ function setupUI() {
 
     bot.sendMessage(text).then(res => {
       addMsg(res.text, "bot");
+      if (res.counter) {
+        const counterDiv = document.createElement("div");
+        counterDiv.style.cssText = `
+          width:100%; text-align:center; font-size:12px;
+          color:var(--text-secondary); margin-top:8px;
+        `;
+        counterDiv.textContent = res.counter;
+        log.appendChild(counterDiv);
+      }
       send.disabled = false;
       send.textContent = "Send";
       input.focus();
+      log.scrollTop = log.scrollHeight;
     });
   };
 
@@ -196,7 +211,7 @@ function setupUI() {
     if (!text) return;
     const div = document.createElement("div");
     div.style.cssText = `
-      max-width:85%; margin:8px 0; padding:11px 15px; border-radius:14px;
+      max-width:90%; margin:8px 0; padding:12px 15px; border-radius:14px;
       font-size:14px; line-height:1.6; word-break:break-word;
       ${type === "bot"
         ? "background:var(--panel-2); color:var(--text); align-self:flex-start;"
@@ -207,5 +222,5 @@ function setupUI() {
     log.scrollTop = log.scrollHeight;
   };
 
-  addMsg("🤖 MRZN AI Assistant\n📊 20 messages/day\n🔄 Dual API", "bot");
-      }
+  addMsg("🤖 MRZN AI", "bot");
+}
