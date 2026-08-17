@@ -1,30 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<link rel="icon" type="image/png" href="assets/logo.png">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Settings — MRZN Apps & Games</title>
-<link rel="stylesheet" href="css/style.css">
-<style>
-.settings-section{ margin-bottom:28px; }
-.settings-eyebrow{ font-family:var(--f-ui); font-weight:700; font-size:12.5px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
-.settings-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
-.settings-row:last-child{ border-bottom:none; }
-.settings-row-label{ font-family:var(--f-ui); font-weight:600; font-size:14.5px; }
-.settings-row-desc{ font-size:12.5px; color:var(--text-faint); margin-top:2px; }
-.swatch{ width:30px; height:30px; border-radius:8px; border:2px solid transparent; cursor:pointer; }
-.swatch.active{ border-color:#fff; }
-.seg-group{ display:flex; gap:6px; background:var(--void); border-radius:8px; padding:4px; }
-.seg-btn{ padding:7px 14px; border-radius:6px; font-family:var(--f-ui); font-weight:600; font-size:12.5px; color:var(--text-dim); }
-.seg-btn.active{ background:var(--cyan); color:var(--void); }
-.toggle-switch{ position:relative; width:46px; height:26px; }
-.toggle-switch input{ opacity:0; width:0; height:0; }
-.toggle-slider{ position:absolute; inset:0; background:var(--line); border-radius:999px; cursor:pointer; transition:.2s; }
-.toggle-slider::before{ content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
-.toggle-switch input:checked + .toggle-slider{ background:var(--cyan); }
-.toggle-switch input:checked + .toggle-slider::before{ transform:translateX(20px); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ✅ TITLE & BRANDING -->
+    <title>Settings — MRZN Apps & Games</title>
+    <meta name="description" content="Manage your MRZN Apps & Games settings and preferences.">
+    
+    <!-- ✅ FAVICON (Browser Tab) -->
+    <link rel="icon" type="image/png" href="./assets/favicon.ico">
+    <link rel="shortcut icon" href="./assets/favicon.ico">
+    
+    <!-- ✅ APPLE TOUCH ICON (iOS) -->
+    <link rel="apple-touch-icon" href="./assets/logo-192.png">
+    
+    <!-- ✅ ANDROID & THEME -->
+    <meta name="theme-color" content="#0891b2">
+    <meta name="msapplication-TileImage" content="./assets/logo-192.png">
+    <meta name="msapplication-TileColor" content="#0891b2">
+    
+    <!-- ✅ OPEN GRAPH -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Settings — MRZN Apps & Games">
+    <meta property="og:description" content="Manage your settings and preferences">
+    <meta property="og:image" content="https://mrzn99-lab.github.io/MRZN.website/assets/logo.png">
+    <meta property="og:image:width" content="200">
+    <meta property="og:image:height" content="200">
+    <meta property="og:url" content="https://mrzn99-lab.github.io/MRZN.website/settings.html">
+    
+    <!-- ✅ TWITTER CARD -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Settings — MRZN">
+    <meta name="twitter:description" content="Settings & Preferences">
+    <meta name="twitter:image" content="https://mrzn99-lab.github.io/MRZN.website/assets/logo.png">
+    
+    <!-- ✅ PWA MANIFEST -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="application-name" content="MRZN Apps & Games">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MRZN">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- ✅ SCHEMA.ORG -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "MRZN Apps & Games",
+      "url": "https://mrzn99-lab.github.io/MRZN.website/",
+      "logo": "https://mrzn99-lab.github.io/MRZN.website/assets/logo.png"
+    }
+    </script>
+    
+    <!-- ✅ CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- ✅ CUSTOM STYLES (Settings Page) -->
+    <style>
+    .settings-section{ margin-bottom:28px; }
+    .settings-eyebrow{ font-family:var(--f-ui); font-weight:700; font-size:12.5px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
+    .settings-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
+    .settings-row:last-child{ border-bottom:none; }
+    .settings-row-label{ font-family:var(--f-ui); font-weight:600; font-size:14.5px; }
+    .settings-row-desc{ font-size:12.5px; color:var(--text-faint); margin-top:2px; }
+    .swatch{ width:30px; height:30px; border-radius:8px; border:2px solid transparent; cursor:pointer; }
+    .swatch.active{ border-color:#fff; }
+    .seg-group{ display:flex; gap:6px; background:var(--void); border-radius:8px; padding:4px; }
+    .seg-btn{ padding:7px 14px; border-radius:6px; font-family:var(--f-ui); font-weight:600; font-size:12.5px; color:var(--text-dim); }
+    .seg-btn.active{ background:var(--cyan); color:var(--void); }
+    .toggle-switch{ position:relative; width:46px; height:26px; }
+    .toggle-switch input{ opacity:0; width:0; height:0; }
+    .toggle-slider{ position:absolute; inset:0; background:var(--line); border-radius:999px; cursor:pointer; transition:.2s; }
+    .toggle-slider::before{ content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+    .toggle-switch input:checked + .toggle-slider{ background:var(--cyan); }
+    .toggle-switch input:checked + .toggle-slider::before{ transform:translateX(20px); }
+    </style>
+    
+    <!-- ✅ GOOGLE ANALYTICS -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PFK6JYF7Y1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-PFK6JYF7Y1");
+    </script>
 </head>
 <body>
 
