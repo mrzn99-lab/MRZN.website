@@ -1,5 +1,15 @@
 User-agent: *
-Disallow: /admin.html
-Allow: /
+Allow: /MRZN.website/
+
+Disallow: /docs/
+Disallow: /?p=
+Disallow: /settings/
+Disallow: /admin/
+Disallow: /assets/github/
+
+Allow: /MRZN.website/
+Allow: /MRZN.website/index.html
+Allow: /MRZN.website/app.html
+Allow: /MRZN.website/assets/
 
 Sitemap: https://mrzn99-lab.github.io/MRZN.website/sitemap.xml
