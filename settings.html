@@ -75,6 +75,71 @@
     .toggle-slider::before{ content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
     .toggle-switch input:checked + .toggle-slider{ background:var(--cyan); }
     .toggle-switch input:checked + .toggle-slider::before{ transform:translateX(20px); }
+
+    /* ✅ UPDATES SECTION STYLES */
+    .update-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: rgba(8, 145, 178, 0.05);
+      transition: all 0.2s;
+    }
+    .update-card:hover {
+      border-color: var(--cyan);
+      background: rgba(8, 145, 178, 0.1);
+    }
+    .update-header {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .update-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .update-meta {
+      flex: 1;
+    }
+    .update-title {
+      font-family: var(--f-display);
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .update-date {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .update-description {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .update-features {
+      font-size: 13px;
+      color: var(--green);
+      font-family: var(--f-mono);
+      padding: 10px;
+      background: rgba(0, 200, 100, 0.1);
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .version-badge {
+      display: inline-block;
+      background: var(--cyan);
+      color: var(--void);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 10px;
+    }
     </style>
     
     <!-- ✅ GOOGLE ANALYTICS -->
@@ -212,7 +277,7 @@
     <div class="settings-row">
       <div>
         <div class="settings-row-label">About MRZN Apps & Games</div>
-        <div class="settings-row-desc">A directory of apps and games with community reviews, built offline-first in Termux.</div>
+        <div class="settings-row-desc">A directory of apps and games with community reviews, download & other.</div>
       </div>
     </div>
 
@@ -221,7 +286,7 @@
         <div class="settings-row-label">Contact Developer</div>
         <div class="settings-row-desc">Get in touch with the developer</div>
       </div>
-      <a href="mailto:mdrafiuzzamanking99@gmail.com" class="btn btn-ghost btn-sm">Email</a>
+      <a href="mailto:mrznappsgames@gmail.com" class="btn btn-ghost btn-sm">Email</a>
     </div>
 
     <div class="settings-row">
@@ -254,6 +319,7 @@
       </label>
     </div>
   </div>
+
   <!-- EXTRA -->
   <div class="panel settings-section">
     <div class="settings-eyebrow">➕ Extra</div>
@@ -274,11 +340,20 @@
       <button class="btn btn-danger btn-sm" id="reset-defaults-btn">Reset</button>
     </div>
   </div>
+
+  <!-- ✅ NEW UPDATES SECTION -->
+  <div class="panel settings-section" id="updates-section">
+    <div class="settings-eyebrow">🆕 NEW UPDATES</div>
+    
+    <div id="updates-container" style="max-height: 600px; overflow-y: auto;">
+      <div class="loader"><div class="ring"></div></div>
+    </div>
+  </div>
 </div>
 
 <footer class="footer">
   <div class="container">
-    <div class="footer-text">© 2026 MRZN Apps & Games</div>
+    <div class="footer-text"> MRZN Apps & Games</div>
     <div class="footer-text">mrzn-web.app</div>
   </div>
 </footer>
@@ -291,5 +366,72 @@
 <script src="js/settings-apply.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/settings-page.js"></script>
+
+<!-- ✅ NEW AI & FEATURES -->
+<script src="js/ai-local-model.js"></script>
+<script src="js/ai-chat-ui.js"></script>
+<script src="js/download-sources.js"></script>
+
+<!-- ✅ UPDATES LOADER -->
+<script>
+async function loadUpdates() {
+  try {
+    if (!window.supabaseClient) {
+      console.log('Supabase not ready yet');
+      return;
+    }
+    
+    const { data: updates } = await window.supabaseClient
+      .from('website_updates')
+      .select('*')
+      .eq('status', 'published')
+      .order('published_date', { ascending: false })
+      .limit(10);
+    
+    const container = document.getElementById('updates-container');
+    if (!container) return;
+    
+    if (!updates || updates.length === 0) {
+      container.innerHTML = '<p style="text-align: center; color: var(--text-faint); padding: 20px;">No updates yet</p>';
+      return;
+    }
+    
+    container.innerHTML = updates.map(update => `
+      <div class="update-card">
+        <div class="update-header">
+          ${update.image_url ? `<img src="${update.image_url}" alt="Update" class="update-icon" onerror="this.style.display='none'">` : ''}
+          <div class="update-meta">
+            <div class="update-title">${update.title}</div>
+            <div class="update-date">
+              ${new Date(update.published_date).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              })}
+            </div>
+          </div>
+        </div>
+        <div class="update-description">${update.description}</div>
+        ${update.features ? `
+          <div class="update-features">
+            <strong>✨ New Features:</strong><br>
+            ${update.features.split(',').map(f => `• ${f.trim()}`).join('<br>')}
+          </div>
+        ` : ''}
+        ${update.version ? `<span class="version-badge">${update.version}</span>` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading updates:', error);
+  }
+}
+
+// Load updates when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadUpdates);
+} else {
+  loadUpdates();
+}
+</script>
 </body>
 </html>
