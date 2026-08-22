@@ -56,6 +56,100 @@
     <!-- ✅ CSS -->
     <link rel="stylesheet" href="css/style.css">
     
+    <!-- ✅ CUSTOM STYLES (App Download Sources) -->
+    <style>
+    .download-section {
+      padding: 24px 0;
+      margin-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+    .download-section h2 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .download-sources-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .download-option {
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(8, 145, 178, 0.02);
+    }
+    .download-option:hover {
+      border-color: var(--cyan);
+      background: rgba(8, 145, 178, 0.08);
+      transform: translateY(-2px);
+    }
+    .download-option-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .download-option-name {
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .download-option-meta {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .btn-download {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--cyan);
+      color: var(--void);
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s;
+      margin-top: 10px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn-download:hover {
+      background: #0891b2;
+      transform: scale(1.02);
+    }
+    .btn-download:active {
+      transform: scale(0.98);
+    }
+    .warning-box {
+      background: rgba(255, 193, 7, 0.1);
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-top: 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .source-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 4px 8px;
+      background: var(--line);
+      border-radius: 4px;
+      margin-top: 6px;
+      color: var(--text-faint);
+      cursor: help;
+    }
+    .source-badge:hover {
+      background: var(--cyan);
+      color: var(--void);
+    }
+    </style>
+    
     <!-- ✅ GOOGLE ANALYTICS -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PFK6JYF7Y1"></script>
     <script>
@@ -89,6 +183,19 @@
   <div id="detail-wrap">
     <div class="loader"><div class="ring"></div></div>
   </div>
+  
+  <!-- ✅ NEW DOWNLOAD SOURCES SECTION -->
+  <div class="download-section" id="download-section" style="display:none;">
+    <h2>📦 Download</h2>
+    
+    <div id="download-sources" class="download-sources-container">
+      <div class="loader"><div class="ring"></div></div>
+    </div>
+    
+    <div class="warning-box" id="source-warning" style="display:none;">
+      ⚠️ <span id="warning-text"></span>
+    </div>
+  </div>
 </div>
 
 <footer class="footer">
@@ -97,6 +204,27 @@
     <div class="footer-text">mrzn-web</div>
   </div>
 </footer>
+
+<!-- ✅ AI CHAT WIDGET -->
+<div style="position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px">
+  <button id="helper-bot-toggle" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:23px;box-shadow:0 4px 20px rgba(0,229,255,0.45);border:none;cursor:pointer">💬</button>
+</div>
+
+<div id="helper-bot-panel" style="
+  position:fixed; inset:0; z-index:300; display:none; flex-direction:column;
+  background-image:linear-gradient(rgba(7,11,20,0.88),rgba(7,11,20,0.92)), url('assets/assistant-bg.jpg');
+  background-size:cover; background-position:center;
+">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)">
+    <div style="font-family:var(--f-display);font-weight:700;font-size:18px;color:var(--cyan)">🤖 MRZN Assistant</div>
+    <button id="helper-bot-close" style="font-size:26px;color:var(--text-faint);background:none;border:none;cursor:pointer">✕</button>
+  </div>
+  <div id="helper-bot-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:20px;max-width:640px;width:100%;margin:0 auto"></div>
+  <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;max-width:640px;width:100%;margin:0 auto">
+    <input type="text" id="helper-bot-input" class="field" placeholder="Ask me about this app..." style="flex:1">
+    <button id="helper-bot-send" class="btn btn-primary" style="padding:12px 20px">Send</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
@@ -107,5 +235,119 @@
 <script src="js/sound.js"></script>
 <script src="js/moderation.js"></script>
 <script src="js/app-detail.js"></script>
+
+<!-- ✅ NEW AI & FEATURES -->
+<script src="js/ai-local-model.js"></script>
+<script src="js/ai-chat-ui.js"></script>
+<script src="js/download-sources.js"></script>
+
+<!-- ✅ DOWNLOAD SOURCES RENDERER -->
+<script>
+// Display download sources in app detail page
+async function renderDownloadSources() {
+  const appId = new URLSearchParams(window.location.search).get('id');
+  if (!appId) return;
+  
+  try {
+    const { data: app } = await window.supabaseClient
+      .from('apps')
+      .select('source_type, source_url, apk_size_mb, min_android_version')
+      .eq('id', appId)
+      .single();
+    
+    if (!app) return;
+    
+    const downloadSection = document.getElementById('download-section');
+    const downloadSources = document.getElementById('download-sources');
+    
+    if (!downloadSection || !downloadSources) return;
+    
+    downloadSection.style.display = 'block';
+    
+    // Render sources based on type
+    const sourceType = app.source_type || 'play_store';
+    const sourceBadgeEl = document.querySelector('.source-badge');
+    
+    if (sourceType === 'play_store' || sourceType === 'both') {
+      downloadSources.innerHTML = `
+        <div class="download-option" onclick="window.open('https://play.google.com/store/apps/details?id=${appId}', '_blank')">
+          <div class="download-option-icon">▶️</div>
+          <div class="download-option-name">Play Store</div>
+          <div class="download-option-meta">Official Source</div>
+          <button class="btn-download">Download</button>
+        </div>
+      `;
+    }
+    
+    // If source is 'both', parse JSON and add hosted source
+    if (sourceType === 'both' && app.source_url) {
+      try {
+        const sources = JSON.parse(app.source_url);
+        if (sources.hosted) {
+          downloadSources.innerHTML += `
+            <div class="download-option" onclick="window.open('${sources.hosted}', '_blank')">
+              <div class="download-option-icon">📥</div>
+              <div class="download-option-name">Direct</div>
+              <div class="download-option-meta">Hosted</div>
+              <button class="btn-download">Download</button>
+            </div>
+          `;
+        }
+      } catch (e) {
+        console.error('Error parsing source URLs:', e);
+      }
+    } else if (sourceType === 'hosted' && app.source_url) {
+      downloadSources.innerHTML = `
+        <div class="download-option" onclick="window.open('${app.source_url}', '_blank')">
+          <div class="download-option-icon">📥</div>
+          <div class="download-option-name">Direct</div>
+          <div class="download-option-meta">Hosted</div>
+          <button class="btn-download">Download</button>
+        </div>
+      `;
+    } else if (sourceType === 'external' && app.source_url) {
+      const externalName = window.DownloadSourcesManager ? 
+        window.DownloadSourcesManager.getExternalSourceName(app.source_url) : 
+        'Third Party';
+      
+      downloadSources.innerHTML = `
+        <div class="download-option" onclick="window.open('${app.source_url}', '_blank')">
+          <div class="download-option-icon">🔗</div>
+          <div class="download-option-name">${externalName}</div>
+          <div class="download-option-meta">External</div>
+          <button class="btn-download">Download</button>
+        </div>
+      `;
+      
+      // Show warning for external sources
+      document.getElementById('source-warning').style.display = 'block';
+      document.getElementById('warning-text').textContent = 
+        'This app is hosted on a third-party platform. Download at your own risk.';
+    }
+    
+    // Add file size and Android version info
+    if (app.apk_size_mb || app.min_android_version) {
+      const info = [];
+      if (app.apk_size_mb) info.push(`📦 ${app.apk_size_mb}MB`);
+      if (app.min_android_version) info.push(`📱 Android ${app.min_android_version}+`);
+      
+      if (info.length > 0) {
+        downloadSources.innerHTML += `
+          <div style="grid-column: 1 / -1; font-size: 12px; color: var(--text-faint); text-align: center; margin-top: 8px;">
+            ${info.join(' • ')}
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    console.error('Error rendering download sources:', error);
+  }
+}
+
+// Load when app detail loads
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(renderDownloadSources, 500);
+});
+</script>
 </body>
 </html>
