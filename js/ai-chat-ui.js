@@ -1,5 +1,5 @@
 /**
- * 💬 MRZN AI Chat UI Controller
+ * 💬 MRZN AI Chat UI Controller file 
  * Manages chat interface and user interactions
  */
 
