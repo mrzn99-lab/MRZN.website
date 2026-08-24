@@ -136,4 +136,4 @@ document.head.appendChild(style);
 // Initialize
 if (!window.aiChat) {
   window.aiChat = new AIChatComplete();
-        }
+}
