@@ -1,215 +1,180 @@
-/* ===================== ADMIN PANEL LOGIC ===================== */
+/**
+ * 📊 Admin Panel - App Requests Management
+ */
 
-let IS_EDITING = false;
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const session = await requireAuth();
-  if (!session) return;
-  refreshNavAuth();
-
-  const { data: profile } = await supabaseClient
-    .from("profiles").select("is_admin").eq("id", session.user.id).single();
-
-  const isAdmin = profile?.is_admin || ADMIN_EMAILS.includes(session.user.email);
-
-  if (!isAdmin) {
-    document.getElementById("admin-guard").innerHTML = `
-      <div class="empty-state">
-        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <div>This page is for admins only.</div>
-      </div>`;
-    return;
-  }
-
-  document.getElementById("admin-guard").style.display = "none";
-  document.getElementById("admin-content").style.display = "block";
-
-  loadAdminApps();
-  loadFlaggedReviews();
-
-  let adminSearchTimer;
-  document.getElementById("admin-search-input").addEventListener("input", (e) => {
-    clearTimeout(adminSearchTimer);
-    adminSearchTimer = setTimeout(() => {
-      loadAdminApps(e.target.value.trim());
-    }, 350);
-  });
-
-  document.getElementById("add-app-btn").addEventListener("click", () => openModal());
-  document.getElementById("close-modal").addEventListener("click", closeModal);
-  document.getElementById("app-modal").addEventListener("click", (e) => {
-    if (e.target.id === "app-modal") closeModal();
-  });
-  document.getElementById("app-form").addEventListener("submit", saveApp);
-});
-
-async function loadAdminApps(searchQuery = "") {
-  let query = supabaseClient.from("apps").select("*").order("created_at", { ascending: false });
-
-  if (searchQuery) {
-    const q = searchQuery.replace(/[%_]/g, "");
-    query = query.ilike("name", `%${q}%`);
-  } else {
-    query = query.limit(100); // default view: latest 100, use search to find older ones
-  }
-
-  const { data: apps, error } = await query;
-
-  const { data: ratings } = await supabaseClient.from("app_ratings").select("*");
-  const ratingMap = {};
-  (ratings || []).forEach(r => ratingMap[r.app_id] = r);
-
-  const tbody = document.getElementById("admin-table-body");
-
-  if (error || !apps?.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px">${searchQuery ? "No apps match that search." : "No apps added yet."}</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = apps.map(app => {
-    const r = ratingMap[app.id];
-    return `
-    <tr>
-      <td><img class="table-icon" src="${escapeHTML(app.icon_url || 'assets/placeholder-icon.svg')}" onerror="this.style.opacity=0"></td>
-      <td>${escapeHTML(app.name)}</td>
-      <td>${escapeHTML(app.category)}</td>
-      <td>${r ? `★ ${r.avg_rating} (${r.review_count})` : "—"}</td>
-      <td style="font-family:var(--f-mono);font-size:12px;color:var(--text-faint)">${new Date(app.created_at).toLocaleDateString("en-US")}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick='editApp(${JSON.stringify(app).replace(/'/g, "&apos;")})'>Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}')">Delete</button>
-      </td>
-    </tr>`;
-  }).join("");
+// Line 1: Initialize admin panel
+async function initAdminPanel() {
+  console.log('⚙️ Loading admin panel...');
+  
+  // Load both apps and requests
+  await loadAppsList();
+  await loadAdminUpdates();
+  await loadAppRequests(); // NEW
 }
 
-function openModal() {
-  IS_EDITING = false;
-  document.getElementById("modal-title").textContent = "Add New App";
-  document.getElementById("app-form").reset();
-  document.getElementById("app-id-field").value = "";
-  document.getElementById("app-modal").classList.add("show");
-}
+// Line 10: Load app requests
+async function loadAppRequests() {
+  try {
+    if (!window.supabaseClient) {
+      console.warn('Database not ready');
+      return;
+    }
 
-function editApp(app) {
-  IS_EDITING = true;
-  document.getElementById("modal-title").textContent = "Edit App";
-  document.getElementById("app-id-field").value = app.id;
-  document.getElementById("f-name").value = app.name;
-  document.getElementById("f-category").value = app.category;
-  document.getElementById("f-description").value = app.description;
-  document.getElementById("f-icon").value = app.icon_url || "";
-  document.getElementById("f-size").value = app.app_size || "";
-  document.getElementById("f-downloads").value = app.downloads || "";
-  document.getElementById("f-screenshots").value = (app.screenshots || []).join(", ");
-  document.getElementById("f-download").value = app.download_url || "";
-  document.getElementById("f-note").value = app.developer_note || "";
-  document.getElementById("app-modal").classList.add("show");
-}
+    const { data: requests, error } = await window.supabaseClient
+      .from('app_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-function closeModal() {
-  document.getElementById("app-modal").classList.remove("show");
-}
+    if (error) {
+      console.error('Load error:', error);
+      return;
+    }
 
-async function saveApp(e) {
-  e.preventDefault();
-  const btn = document.getElementById("save-app-btn");
-  btn.disabled = true; btn.textContent = "Saving...";
+    const container = document.getElementById('app-requests-list');
+    if (!container) {
+      console.warn('Container not found - will create it');
+      createRequestsSection();
+      return;
+    }
 
-  const payload = {
-    name: document.getElementById("f-name").value.trim(),
-    category: document.getElementById("f-category").value.trim(),
-    description: document.getElementById("f-description").value.trim(),
-    icon_url: document.getElementById("f-icon").value.trim() || null,
-    app_size: document.getElementById("f-size").value.trim() || null,
-    downloads: document.getElementById("f-downloads").value.trim() || null,
-    screenshots: document.getElementById("f-screenshots").value
-      .split(",").map(s => s.trim()).filter(Boolean),
-    download_url: document.getElementById("f-download").value.trim() || null,
-    developer_note: document.getElementById("f-note").value.trim() || null
-  };
+    // Line 38: Render requests
+    if (!requests || requests.length === 0) {
+      container.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No app requests yet</div>';
+      return;
+    }
 
-  const appId = document.getElementById("app-id-field").value;
-  let error;
-
-  if (appId) {
-    ({ error } = await supabaseClient.from("apps").update(payload).eq("id", appId));
-  } else {
-    ({ error } = await supabaseClient.from("apps").insert(payload));
-  }
-
-  btn.disabled = false; btn.textContent = "Save";
-
-  if (error) {
-    showToast("Could not save: " + error.message, "error");
-    console.error(error);
-    return;
-  }
-
-  showToast(appId ? "App updated!" : "App added!", "success");
-  closeModal();
-  loadAdminApps();
-}
-
-async function loadFlaggedReviews() {
-  const wrap = document.getElementById("flagged-reviews-wrap");
-
-  const { data: reviews, error } = await supabaseClient
-    .from("reviews")
-    .select("id, app_id, rating, comment, flag_reason, created_at, apps(name)")
-    .eq("is_flagged", true)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    wrap.innerHTML = `<div style="color:var(--danger);font-size:13.5px">Could not load flagged reviews: ${error.message}</div>`;
-    return;
-  }
-
-  if (!reviews || !reviews.length) {
-    wrap.innerHTML = `<div style="color:var(--text-faint);font-size:13.5px">No flagged reviews. All clear.</div>`;
-    return;
-  }
-
-  wrap.innerHTML = reviews.map(r => `
-    <div class="review-item">
-      <div class="review-head">
-        <div>
-          <div class="review-name">${escapeHTML(r.apps?.name || "Unknown app")} — ${r.rating}★</div>
-          <div class="review-date">Flagged for: ${escapeHTML(r.flag_reason || "unknown")} · ${timeAgo(r.created_at)}</div>
-        </div>
+    container.innerHTML = `
+      <div style="overflow-x: auto;">
+        <table class="admin-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--line);">
+              <th style="padding: 12px; text-align: left; font-weight: 600;">App Name</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Link</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Reason</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+              <th style="padding: 12px; text-align: center; font-weight: 600;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${requests.map(req => `
+              <tr style="border-bottom: 1px solid var(--line); hover: background: var(--line);">
+                <td style="padding: 12px; font-weight: 600;">${req.app_name || 'N/A'}</td>
+                <td style="padding: 12px;">
+                  <a href="${req.app_link}" target="_blank" rel="noopener" style="color: var(--cyan); text-decoration: none; word-break: break-all;">
+                    ${req.app_link?.substring(0, 50) || 'N/A'}...
+                  </a>
+                </td>
+                <td style="padding: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                  ${req.reason ? req.reason.substring(0, 50) : 'N/A'}
+                </td>
+                <td style="padding: 12px; font-size: 13px; color: var(--text-dim);">
+                  ${new Date(req.created_at).toLocaleDateString()}
+                </td>
+                <td style="padding: 12px;">
+                  <select onchange="updateRequestStatus(${req.id}, this.value)" style="
+                    background: var(--void);
+                    color: var(--text);
+                    border: 1px solid var(--line);
+                    padding: 6px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                  ">
+                    <option value="pending" ${req.status === 'pending' ? 'selected' : ''}>📋 Pending</option>
+                    <option value="approved" ${req.status === 'approved' ? 'selected' : ''}>✅ Approved</option>
+                    <option value="rejected" ${req.status === 'rejected' ? 'selected' : ''}>❌ Rejected</option>
+                  </select>
+                </td>
+                <td style="padding: 12px; text-align: center;">
+                  <button onclick="deleteAppRequest(${req.id})" style="
+                    background: rgba(220, 38, 38, 0.2);
+                    color: #fca5a5;
+                    border: 1px solid rgba(220, 38, 38, 0.4);
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: 600;
+                  ">Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
-      ${r.comment ? `<div class="review-comment">${escapeHTML(r.comment)}</div>` : "<div style='color:var(--text-faint);font-size:13px'>(no comment)</div>"}
-      <div style="display:flex;gap:10px;margin-top:12px">
-        <button class="btn btn-primary btn-sm" onclick="approveReview('${r.id}')">Approve</button>
-        <button class="btn btn-danger btn-sm" onclick="rejectReview('${r.id}')">Delete</button>
+    `;
+
+  } catch (error) {
+    console.error('Error loading requests:', error);
+  }
+}
+
+// Line 121: Update request status
+async function updateRequestStatus(id, status) {
+  try {
+    if (!window.supabaseClient) return;
+
+    const { error } = await window.supabaseClient
+      .from('app_requests')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    console.log('✅ Status updated to:', status);
+    loadAppRequests(); // Reload list
+  } catch (error) {
+    console.error('Error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Line 141: Delete request
+async function deleteAppRequest(id) {
+  if (!confirm('Delete this request?')) return;
+
+  try {
+    if (!window.supabaseClient) return;
+
+    const { error } = await window.supabaseClient
+      .from('app_requests')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    alert('✅ Deleted');
+    loadAppRequests();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Line 161: Create requests section if missing
+function createRequestsSection() {
+  const adminSection = document.querySelector('.admin-section');
+  if (!adminSection) return;
+
+  const requestsSection = document.createElement('div');
+  requestsSection.innerHTML = `
+    <div class="section-head" style="margin-top: 40px;">
+      <div>
+        <div class="eyebrow">USER REQUESTS</div>
+        <h2 class="section-title">App Requests</h2>
       </div>
     </div>
-  `).join("");
+    <div id="app-requests-list"></div>
+  `;
+
+  adminSection.parentNode.insertBefore(requestsSection, adminSection.nextSibling);
+  loadAppRequests();
 }
 
-async function approveReview(id) {
-  const { error } = await supabaseClient.from("reviews").update({ is_flagged: false }).eq("id", id);
-  if (error) return showToast("Could not approve.", "error");
-  showToast("Review approved.", "success");
-  loadFlaggedReviews();
-}
-
-async function rejectReview(id) {
-  if (!confirm("Permanently delete this review?")) return;
-  const { error } = await supabaseClient.from("reviews").delete().eq("id", id);
-  if (error) return showToast("Could not delete.", "error");
-  showToast("Review deleted.", "success");
-  loadFlaggedReviews();
-}
-
-async function deleteApp(id) {
-  if (!confirm("Permanently delete this app? All its reviews will be deleted too.")) return;
-
-  const { error } = await supabaseClient.from("apps").delete().eq("id", id);
-  if (error) {
-    showToast("Could not delete.", "error");
-    return;
-  }
-  showToast("App deleted.", "success");
-  loadAdminApps();
+// Line 183: Initialize on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdminPanel);
+} else {
+  initAdminPanel();
 }
