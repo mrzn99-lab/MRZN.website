@@ -9,12 +9,12 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshNavAuth();
   
   // Language FIRST
-  loadLanguageSettings().then(() => {
-    setupAppearanceSettings();
-    setupSoundSettings();
-    setupDataSettings();
-  });
-});
+ // loadLanguageSettings().then(() => {
+   // setupAppearanceSettings();
+//    setupSoundSettings();
+///    setupDataSettings();
+//  });
+//});
 
 // ============ LANGUAGE SETTINGS ============
 
