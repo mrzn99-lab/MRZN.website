@@ -1,7 +1,3 @@
-/* ===================================================================
-   MRZN SIDEBAR MENU + UPDATES
-   Complete navigation with language + updates support
-   =================================================================== */
 
 document.addEventListener("DOMContentLoaded", async () => {
   const navContainer = document.querySelector(".navbar .container");
@@ -61,11 +57,42 @@ document.addEventListener("DOMContentLoaded", async () => {
       ${sidebarLink("index.html", "🏠", "Home")}
       ${sidebarLink("index.html#apps", "📱", "Browse Apps")}
       ${sidebarLink("profile.html", "👤", "Profile")}
+      
+      <!-- Settings & Language Section -->
+      <div style="height:1px;background:var(--line);margin:10px;"></div>
+      
       ${sidebarLink("settings.html", "⚙️", "Settings")}
       ${sidebarLink("#", "📰", "Updates", "sidebar-updates")}
-      ${sidebarLink("#", "📝", "Request an App", "sidebar-request-app")}
       ${isAdmin ? sidebarLink("admin.html", "🛠️", "Admin Panel") : ""}
+      
+      <!-- Language Selector -->
+      <div style="padding: 12px; margin: 8px 0; background: rgba(0, 229, 255, 0.05); border-radius: 6px; border-left: 3px solid var(--cyan);">
+        <label style="
+          display: block;
+          font-weight: 600;
+          font-size: 12px;
+          color: var(--text);
+          margin-bottom: 8px;
+        ">🌍 Language</label>
+        
+        <select id="sidebar-language-select" style="
+          width: 100%;
+          padding: 8px;
+          border: 1px solid var(--line);
+          border-radius: 4px;
+          background: var(--void);
+          color: var(--text);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+        ">
+          <!-- Options will be populated by JavaScript -->
+        </select>
+      </div>
+      
       <div style="height:1px;background:var(--line);margin:14px 10px"></div>
+      ${sidebarLink("#", "📝", "Request an App", "sidebar-request-app")}
       <a href="https://youtube.com/@mrznapps_games?si=fKnK3nBYOeyRThQA" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:8px;color:var(--text-dim);font-family:var(--f-ui);font-size:14px">📺 YouTube</a>
       ${sidebarLink("#", "📤", "Share Website", "sidebar-share")}
     </div>
@@ -131,6 +158,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     closeSidebar();
     window.openAppRequestModal?.();
   });
+
+  // ============ LANGUAGE SELECTOR IN SIDEBAR ============
+
+  async function initLanguageSelector() {
+    try {
+      if (!window.languageManager) {
+        console.warn('Language manager not ready');
+        return;
+      }
+
+      const languages = window.languageManager.getLanguages();
+      const select = document.getElementById('sidebar-language-select');
+
+      if (!select) return;
+
+      // Build options
+      let optionsHTML = '';
+      for (const [code, name] of Object.entries(languages)) {
+        const selected = window.languageManager.currentLang === code ? 'selected' : '';
+        optionsHTML += `<option value="${code}" ${selected}>${name}</option>`;
+      }
+
+      select.innerHTML = optionsHTML;
+
+      // Change language event
+      select.addEventListener('change', async (e) => {
+        const langCode = e.target.value;
+        console.log('🌍 Changing to:', langCode);
+        
+        try {
+          await window.languageManager.changeLanguage(langCode);
+          showToast?.(`✅ Language changed to ${window.languageManager.getLanguageName(langCode)}`, 'success');
+        } catch (error) {
+          console.error('Language change error:', error);
+          showToast?.('❌ Error changing language', 'error');
+        }
+      });
+
+      console.log('✅ Language selector initialized');
+    } catch (error) {
+      console.error('Language selector error:', error);
+    }
+  }
+
+  // Wait for language manager
+  const checkLangManager = setInterval(() => {
+    if (window.languageManager) {
+      clearInterval(checkLangManager);
+      initLanguageSelector();
+    }
+  }, 100);
 
   // ============ UPDATES PANEL ============
 
