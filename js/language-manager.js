@@ -1,7 +1,7 @@
 /**
  * 🌍 Multi-Language Manager
  * 100+ languages support
- * Google Translate powered
+ * Offline translation using MyMemory API
  */
 
 class LanguageManager {
@@ -12,7 +12,6 @@ class LanguageManager {
     this.init();
   }
 
-  // Line 15: সব supported languages
   supportedLanguages = {
     'en': '🇺🇸 English',
     'bn': '🇧🇩 Bengali (বাংলা)',
@@ -68,7 +67,6 @@ class LanguageManager {
       console.log('🌍 Initializing Language Manager...');
       console.log('Current language:', this.currentLang);
       
-      // Wait for DOM
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => this.applyLanguage());
       } else {
@@ -79,7 +77,6 @@ class LanguageManager {
     }
   }
 
-  // Line 78: Main translation function
   async applyLanguage() {
     try {
       if (this.currentLang === 'en') {
@@ -90,7 +87,6 @@ class LanguageManager {
       console.log('🔄 Applying language:', this.currentLang);
       this.isTranslating = true;
 
-      // Get all text elements
       const elements = document.querySelectorAll(
         'h1, h2, h3, h4, h5, h6, p, span, button, label, a, div:not([class*="code"]):not([class*="log"])'
       );
@@ -100,17 +96,12 @@ class LanguageManager {
       for (let elem of elements) {
         if (!elem.textContent || elem.textContent.trim().length === 0) continue;
         if (elem.querySelector('script, style, img')) continue;
-
-        // Skip if already translated
         if (elem.getAttribute('data-translated')) continue;
 
         try {
           const originalText = elem.textContent.trim();
           
-          // Line 108: Skip very short text
           if (originalText.length < 2) continue;
-          
-          // Skip if contains code/numbers only
           if (/^[\d\s\.\,\-\:\/]+$/.test(originalText)) continue;
 
           const translated = await this.translateText(originalText, this.currentLang);
@@ -121,7 +112,7 @@ class LanguageManager {
             count++;
           }
         } catch (err) {
-          console.warn('Translation error for:', elem.textContent.substring(0, 30));
+          console.warn('Translation error');
         }
       }
 
@@ -134,12 +125,10 @@ class LanguageManager {
     }
   }
 
-  // Line 138: Translate single text
   async translateText(text, targetLang) {
     try {
       if (!text || targetLang === 'en') return text;
 
-      // Line 143: Use Google Translate API (free)
       const encodedText = encodeURIComponent(text);
       const url = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`;
 
@@ -157,7 +146,6 @@ class LanguageManager {
     }
   }
 
-  // Line 160: Change language
   async changeLanguage(langCode) {
     try {
       console.log('🔄 Changing language to:', langCode);
@@ -165,13 +153,14 @@ class LanguageManager {
       this.currentLang = langCode;
       localStorage.setItem('mrzn_language', langCode);
 
-      // Remove all data-translated to allow re-translation
       document.querySelectorAll('[data-translated]').forEach(el => {
         el.removeAttribute('data-translated');
       });
 
-      // Re-apply
       await this.applyLanguage();
+
+      // Notify other scripts
+      window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: this.currentLang } }));
 
       console.log('✅ Language changed to ' + langCode);
     } catch (error) {
@@ -179,18 +168,16 @@ class LanguageManager {
     }
   }
 
-  // Line 181: Get all languages
   getLanguages() {
     return this.supportedLanguages;
   }
 
-  // Line 185: Get language name
   getLanguageName(code) {
     return this.supportedLanguages[code] || code;
   }
 }
 
-// Line 190: Initialize globally
+// Initialize globally
 if (!window.languageManager) {
   window.languageManager = new LanguageManager();
-              }
+}
