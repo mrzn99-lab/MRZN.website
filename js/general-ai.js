@@ -1,7 +1,6 @@
 /**
- * 🤖 Offline AI - No API Keys Needed
- * Pattern Matching + Database + Bengali NLP
- * সম্পূর্ণ অফলাইন - কোনো internet requirement নেই
+ * 🤖 General AI - Offline + Language Support
+ * Pattern Matching + Database + Multi-Language
  */
 
 class GeneralAI {
@@ -14,12 +13,12 @@ class GeneralAI {
 
   async init() {
     try {
-      console.log('🤖 Initializing Offline AI...');
+      console.log('🤖 Initializing Offline AI with Language Support...');
       await this.waitForDB();
       await this.loadAppData();
       this.setupPatterns();
       this.isReady = true;
-      console.log('✅ AI Ready - No API Keys, Fully Offline');
+      console.log('✅ AI Ready - Multilingual Support');
     } catch (err) {
       console.error('AI init:', err);
       this.isReady = true;
@@ -65,42 +64,46 @@ class GeneralAI {
     }
   }
 
+  // ============ LANGUAGE SUPPORT ============
+
+  getCurrentLanguage() {
+    return window.languageManager?.currentLang || localStorage.getItem('mrzn_language') || 'en';
+  }
+
+  async translateResponse(text, targetLang) {
+    if (!text || targetLang === 'en') return text;
+
+    try {
+      const encodedText = encodeURIComponent(text);
+      const url = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.responseStatus === 200) {
+        return data.responseData.translatedText;
+      }
+      return text;
+    } catch (err) {
+      console.warn('Translation error:', err);
+      return text;
+    }
+  }
+
   // ============ PATTERNS & RULES ============
 
   setupPatterns() {
-    // Line 62: Bengali & English patterns
     this.patterns = {
-      // Greetings
       greeting: /hello|hi|hey|নমস্কার|হ্যালো|হাই|কীভাবে|কি খবর|কিমন/i,
-      
-      // Farewell
       farewell: /bye|goodbye|বিদায়|খোদা|আল্লাহ|দেখা হবে/i,
-      
-      // Thanks
       thanks: /thanks|thank you|ধন্যবাদ|শুকরিয়া|মাশাল্লাহ/i,
-      
-      // Search
       search: /search|find|খোঁজো|খুঁজুন|দাও|বলো/i,
-      
-      // Details
       details: /details|about|info|inform|describe|বলো|কিভাবে|কী|সম্পর্কে/i,
-      
-      // Comparison
       compare: /compare|vs|versus|কোনটা/i,
-      
-      // Rating
       rating: /rating|rate|review|রেটিং|রিভিউ|মতামত/i,
-      
-      // Best
       best: /best|top|good|ভাল|সেরা|দারুণ|excellent/i,
-      
-      // Trending
-      trending: /trending|popular|popular|ট্রেন্ডিং|জনপ্রিয়/i,
-      
-      // Help
+      trending: /trending|popular|ট্রেন্ডিং|জনপ্রিয়/i,
       help: /help|command|কমান্ড|সাহায্য|কি করতে|কীভাবে ব্যবহার/i,
-      
-      // Categories
       category: /categor|type|ধরন|বিভাগ|ক্যাটাগরি/i,
     };
   }
@@ -134,18 +137,15 @@ class GeneralAI {
     
     const q = String(query).toLowerCase();
     
-    // Exact
     let app = this.appCache.find(a => a?.name?.toLowerCase() === q);
     if (app) return app;
     
-    // Contains
     app = this.appCache.find(a =>
       a?.name?.toLowerCase().includes(q) ||
       a?.description?.toLowerCase().includes(q)
     );
     if (app) return app;
     
-    // Typo-tolerant
     let best = null, minDist = 3;
     this.appCache.forEach(a => {
       const dist = this.levenshtein(q, a?.name);
@@ -231,12 +231,10 @@ class GeneralAI {
   "find Termux"
   "details AIDE"
   "hello"
-  "Termux vs AIDE"
-  "সেরা গেমস কি?"`;
+  "Termux vs AIDE"`;
   }
 
   generateGeneral(input) {
-    // Line 266: Simple but effective responses
     const responses = [
       'I\'m MRZN AI. I can help you find apps! 📱',
       'Ask me about apps or chat about anything! 😊',
@@ -260,8 +258,6 @@ class GeneralAI {
       this.history.push({ role: 'user', content: input });
 
       let response = '';
-
-      // Line 296: Check patterns in order
 
       // GREETING
       if (this.patterns.greeting.test(msg)) {
@@ -414,6 +410,12 @@ class GeneralAI {
       // DEFAULT
       else {
         response = this.generateGeneral(input);
+      }
+
+      // Translate response to user's language
+      const userLang = this.getCurrentLanguage();
+      if (userLang !== 'en' && response) {
+        response = await this.translateResponse(response, userLang);
       }
 
       this.history.push({ role: 'assistant', content: response });
