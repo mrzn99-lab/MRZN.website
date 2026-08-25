@@ -24,23 +24,44 @@ class GeneralAI {
     }
   }
 
-  async waitForDB() {
-    return new Promise((resolve) => {
-      let tries = 0;
-      const check = () => {
-        if (window.supabaseClient) {
-          console.log('✅ Database connected');
-          resolve();
-        } else if (tries < 50) {
-          tries++;
-          setTimeout(check, 100);
-        } else {
-          console.warn('⚠️ Database timeout - using offline mode');
-          resolve();
-        }
-      };
-      check();
-    });
+async loadAppData() {
+    try {
+      // LINE 37: পরিবর্তন
+      if (!window.supabaseClient) {
+        console.warn('Supabase not available');
+        return;
+      }
+
+      console.log('🔄 Loading apps from database...');
+
+      // LINE 43: পরিবর্তন
+      const { data: apps, error } = await window.supabaseClient
+        .from('apps')
+        .select('id, name, description, category, rating, review_count, icon_url, downloads, size')
+        .limit(1000);
+
+      if (error) {
+        console.error('❌ Load error:', error.message);
+        this.appCache = [];
+        return;
+      }
+
+      if (!apps) {
+        console.warn('No apps returned');
+        this.appCache = [];
+        return;
+      }
+
+      this.appCache = apps;
+      console.log('✅ Apps loaded: ' + this.appCache.length);
+
+      if (this.appCache.length > 0) {
+        console.log('First app:', this.appCache[0].name);
+      }
+    } catch (err) {
+      console.error('Data load error:', err);
+      this.appCache = [];
+    }
   }
 
   async loadAppData() {
