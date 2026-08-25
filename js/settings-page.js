@@ -1,13 +1,20 @@
-/* ===================== SETTINGS PAGE LOGIC ===================== */
-
-document.addEventListener("DOMContentLoaded", () => {
-  refreshNavAuth();
-
-  /**
- * ⚙️ Settings Page - Language Selector Added
+/**
+ * ⚙️ Settings Page - Complete Logic
+ * Language + Appearance + Sound Settings
  */
 
-// Line 5: Find or create language section in settings
+document.addEventListener("DOMContentLoaded", () => {
+  console.log('⚙️ Loading settings...');
+  
+  refreshNavAuth();
+  loadLanguageSettings();
+  setupAppearanceSettings();
+  setupSoundSettings();
+  setupDataSettings();
+});
+
+// ============ LANGUAGE SETTINGS ============
+// Line 16
 
 async function loadLanguageSettings() {
   try {
@@ -18,29 +25,21 @@ async function loadLanguageSettings() {
       return;
     }
 
-    // Line 15: Create language settings panel
-    const settingsPanel = document.querySelector('.settings-section') || 
-                         document.querySelector('.panel');
-
-    if (!settingsPanel) {
-      console.warn('Settings panel not found');
-      return;
-    }
-
-    // Line 23: Check if already created
+    // Line 25: Check if already created
     if (document.getElementById('language-settings-section')) {
       return;
     }
 
-    // Line 27: Create language section
+    // Line 29: Create language section
     const langSection = document.createElement('div');
     langSection.id = 'language-settings-section';
     langSection.className = 'panel settings-section';
     langSection.style.marginTop = '20px';
+    langSection.style.marginBottom = '20px';
 
     const languages = window.languageManager.getLanguages();
 
-    // Line 36: Build language options
+    // Line 38: Build language options
     let langOptionsHTML = '';
     for (const [code, name] of Object.entries(languages)) {
       const selected = window.languageManager.currentLang === code ? 'selected' : '';
@@ -49,7 +48,7 @@ async function loadLanguageSettings() {
 
     langSection.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <h3 style="margin-bottom: 15px; font-size: 18px; font-weight: 700;">🌍 Language Settings</h3>
+        <h2 class="section-title" style="margin-bottom: 15px;">🌍 Language Settings</h2>
         
         <div style="background: rgba(0, 229, 255, 0.05); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
           <label style="
@@ -57,7 +56,8 @@ async function loadLanguageSettings() {
             margin-bottom: 10px;
             font-weight: 600;
             font-size: 14px;
-          ">Select Language (100+ languages available)</label>
+            color: var(--text);
+          ">Select Language (100+ languages)</label>
           
           <select id="language-select" style="
             width: 100%;
@@ -69,6 +69,7 @@ async function loadLanguageSettings() {
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
+            font-family: inherit;
           ">
             ${langOptionsHTML}
           </select>
@@ -84,6 +85,7 @@ async function loadLanguageSettings() {
           text-align: center;
           font-size: 13px;
           display: none;
+          font-weight: 600;
         "></div>
 
         <div style="
@@ -95,26 +97,19 @@ async function loadLanguageSettings() {
           font-size: 13px;
           line-height: 1.5;
         ">
-          <strong>💡 Tip:</strong> Your language preference is saved locally. It will be remembered when you visit again.
+          <strong>💡 Tip:</strong> Your language preference is saved. It will be remembered when you visit again.
         </div>
       </div>
     `;
 
-    // Line 94: Insert into settings
-    const settingsContainer = document.querySelector('[id*="settings"]') || 
-                             document.querySelector('.settings-container') ||
-                             document.body;
+    // Line 103: Insert into page
+    const mainContent = document.querySelector('main') || 
+                       document.querySelector('[role="main"]') ||
+                       document.body;
 
-    if (settingsContainer.querySelector('h2:first-of-type')) {
-      settingsContainer.querySelector('h2:first-of-type').parentNode.insertBefore(
-        langSection,
-        settingsContainer.querySelector('h2:first-of-type').nextSibling
-      );
-    } else {
-      settingsContainer.insertBefore(langSection, settingsContainer.firstChild);
-    }
+    mainContent.insertBefore(langSection, mainContent.firstChild);
 
-    // Line 108: Event listener
+    // Line 110: Event listener
     document.getElementById('language-select').addEventListener('change', async (e) => {
       const langCode = e.target.value;
       const status = document.getElementById('language-status');
@@ -133,7 +128,7 @@ async function loadLanguageSettings() {
         
         setTimeout(() => {
           status.style.display = 'none';
-        }, 2000);
+        }, 2500);
       } catch (error) {
         status.style.background = 'rgba(220, 38, 38, 0.1)';
         status.style.color = '#fca5a5';
@@ -148,136 +143,217 @@ async function loadLanguageSettings() {
   }
 }
 
-// Line 147: Initialize on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadLanguageSettings);
-} else {
-  loadLanguageSettings();
-                                                                }
-  // ---------- Accent color ----------
-  const savedAccent = localStorage.getItem("mrzn_accent") || "blue";
-  document.querySelectorAll(".swatch").forEach(sw => {
-    sw.classList.toggle("active", sw.dataset.color === savedAccent);
-    sw.addEventListener("click", () => {
-      localStorage.setItem("mrzn_accent", sw.dataset.color);
-      document.querySelectorAll(".swatch").forEach(s => s.classList.remove("active"));
-      sw.classList.add("active");
-      applyStoredSettings();
-      showToast("Accent color updated!", "success");
+// ============ APPEARANCE SETTINGS ============
+// Line 149
+
+function setupAppearanceSettings() {
+  try {
+    console.log('🎨 Loading appearance settings...');
+
+    // Line 154: Accent color
+    const savedAccent = localStorage.getItem("mrzn_accent") || "blue";
+    document.querySelectorAll(".swatch").forEach(sw => {
+      sw.classList.toggle("active", sw.dataset.color === savedAccent);
+      sw.addEventListener("click", () => {
+        localStorage.setItem("mrzn_accent", sw.dataset.color);
+        document.querySelectorAll(".swatch").forEach(s => s.classList.remove("active"));
+        sw.classList.add("active");
+        applyStoredSettings();
+        showToast("✅ Accent color updated!", "success");
+      });
     });
-  });
 
-  // ---------- Font size ----------
-  const savedFontSize = localStorage.getItem("mrzn_font_size") || "medium";
-  document.querySelectorAll("#font-size-group .seg-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.size === savedFontSize);
-    btn.addEventListener("click", () => {
-      localStorage.setItem("mrzn_font_size", btn.dataset.size);
-      document.querySelectorAll("#font-size-group .seg-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      applyStoredSettings();
+    // Line 168: Font size
+    const savedFontSize = localStorage.getItem("mrzn_font_size") || "medium";
+    document.querySelectorAll("#font-size-group .seg-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.size === savedFontSize);
+      btn.addEventListener("click", () => {
+        localStorage.setItem("mrzn_font_size", btn.dataset.size);
+        document.querySelectorAll("#font-size-group .seg-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        applyStoredSettings();
+        showToast("✅ Font size updated!", "success");
+      });
     });
-  });
 
-  // ---------- Simple toggles ----------
-  bindToggle("compact-toggle", "mrzn_compact");
-  bindToggle("animation-toggle", "mrzn_animations", true); // inverted: checked = animations ON
-  bindToggle("datasaver-toggle", "mrzn_datasaver");
-  bindToggle("sound-toggle", "mrzn_sound_enabled", true); // checked = sound ON
-  bindToggle("voice-toggle", "mrzn_voice_enabled", true); // checked = voice ON
+    // Line 184: Simple toggles
+    bindToggle("compact-toggle", "mrzn_compact");
+    bindToggle("animation-toggle", "mrzn_animations", true);
+    bindToggle("datasaver-toggle", "mrzn_datasaver");
 
-  function bindToggle(id, key, invertedOnMeansOn = false) {
+    console.log('✅ Appearance settings loaded');
+
+  } catch (error) {
+    console.error('Appearance settings error:', error);
+  }
+}
+
+// ============ SOUND SETTINGS ============
+// Line 197
+
+function setupSoundSettings() {
+  try {
+    console.log('🔊 Loading sound settings...');
+
+    // Line 202: Sound toggles
+    bindToggle("sound-toggle", "mrzn_sound_enabled", true);
+    bindToggle("voice-toggle", "mrzn_voice_enabled", true);
+
+    console.log('✅ Sound settings loaded');
+
+  } catch (error) {
+    console.error('Sound settings error:', error);
+  }
+}
+
+// ============ DATA SETTINGS ============
+// Line 214
+
+function setupDataSettings() {
+  try {
+    console.log('📊 Loading data settings...');
+
+    // Line 219: Recently viewed
+    const recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
+    const recentCountEl = document.getElementById("recently-viewed-count");
+    if (recentCountEl) {
+      recentCountEl.textContent = `${recent.length} apps seen recently`;
+    }
+
+    const viewRecentBtn = document.getElementById("view-recent-btn");
+    if (viewRecentBtn) {
+      viewRecentBtn.addEventListener("click", () => {
+        const list = document.getElementById("recently-viewed-list");
+        const isOpen = list.style.display === "block";
+        list.style.display = isOpen ? "none" : "block";
+        
+        if (!isOpen) {
+          list.innerHTML = recent.length
+            ? recent.map(a => `
+                <a href="app.html?id=${a.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;color:inherit;text-decoration:none;">
+                  <img src="${escapeHTML(a.icon || 'assets/placeholder-icon.svg')}" style="width:30px;height:30px;border-radius:7px;background:var(--panel-2)">
+                  <span style="font-size:13.5px">${escapeHTML(a.name)}</span>
+                </a>`).join("")
+            : `<div style="color:var(--text-faint);font-size:13px">No apps viewed yet.</div>`;
+        }
+      });
+    }
+
+    // Line 249: Favorites
+    const favorites = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+    const favCountEl = document.getElementById("favorites-count");
+    if (favCountEl) {
+      favCountEl.textContent = `${favorites.length} apps favorited`;
+    }
+
+    const viewFavBtn = document.getElementById("view-favorites-btn");
+    if (viewFavBtn) {
+      viewFavBtn.addEventListener("click", () => {
+        const list = document.getElementById("favorites-list");
+        const isOpen = list.style.display === "block";
+        list.style.display = isOpen ? "none" : "block";
+        
+        if (!isOpen) {
+          list.innerHTML = favorites.length
+            ? favorites.map(a => `
+                <a href="app.html?id=${a.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;color:inherit;text-decoration:none;">
+                  <img src="${escapeHTML(a.icon || 'assets/placeholder-icon.svg')}" style="width:30px;height:30px;border-radius:7px;background:var(--panel-2)">
+                  <span style="font-size:13.5px">${escapeHTML(a.name)}</span>
+                </a>`).join("")
+            : `<div style="color:var(--text-faint);font-size:13px">No favorites yet.</div>`;
+        }
+      });
+    }
+
+    // Line 279: Request an app shortcut
+    const openReqBtn = document.getElementById("open-request-btn");
+    if (openReqBtn) {
+      openReqBtn.addEventListener("click", () => {
+        window.openAppRequestModal?.();
+      });
+    }
+
+    // Line 286: Reset to defaults
+    const resetBtn = document.getElementById("reset-defaults-btn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        if (!confirm("Reset appearance and sound settings to default? Your favorites and history will be kept.")) return;
+        ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
+         "mrzn_sound_enabled", "mrzn_voice_enabled"].forEach(k => localStorage.removeItem(k));
+        showToast("✅ Settings reset! Reloading...", "success");
+        setTimeout(() => window.location.reload(), 1000);
+      });
+    }
+
+    // Line 300: Clear cache
+    const clearBtn = document.getElementById("clear-cache-btn");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        if (!confirm("This will reset all your site preferences. Continue?")) return;
+        ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
+         "mrzn_sound_enabled", "mrzn_voice_enabled", "mrzn_recently_viewed", "mrzn_favorites"].forEach(k => localStorage.removeItem(k));
+        showToast("✅ Cache cleared! Reloading...", "success");
+        setTimeout(() => window.location.reload(), 1000);
+      });
+    }
+
+    // Line 314: Share button
+    const shareBtn = document.getElementById("share-btn");
+    if (shareBtn) {
+      shareBtn.addEventListener("click", async () => {
+        const shareData = {
+          title: "MRZN Apps & Games",
+          text: "Check out MRZN Apps & Games — discover apps, games, and AI tools!",
+          url: window.location.origin + window.location.pathname.replace("settings.html", "index.html")
+        };
+        
+        if (navigator.share) {
+          try { 
+            await navigator.share(shareData);
+          } catch (e) { 
+            // User cancelled
+          }
+        } else {
+          navigator.clipboard?.writeText(shareData.url);
+          showToast("✅ Link copied to clipboard!", "success");
+        }
+      });
+    }
+
+    console.log('✅ Data settings loaded');
+
+  } catch (error) {
+    console.error('Data settings error:', error);
+  }
+}
+
+// ============ HELPER FUNCTIONS ============
+// Line 350
+
+function bindToggle(id, key, invertedOnMeansOn = false) {
+  try {
     const el = document.getElementById(id);
     if (!el) return;
+    
     const stored = localStorage.getItem(key);
     if (invertedOnMeansOn) {
-      el.checked = stored !== "off"; // default true unless explicitly "off"
+      el.checked = stored !== "off";
     } else {
       el.checked = stored === "on";
     }
+    
     el.addEventListener("change", () => {
-      if (invertedOnMeansOn) {
-        localStorage.setItem(key, el.checked ? "on" : "off");
-      } else {
-        localStorage.setItem(key, el.checked ? "on" : "off");
-      }
+      localStorage.setItem(key, el.checked ? "on" : "off");
       applyStoredSettings();
     });
+  } catch (error) {
+    console.error('Bind toggle error:', error);
   }
+}
 
-  // ---------- Recently viewed ----------
-  const recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
-  document.getElementById("recently-viewed-count").textContent = `${recent.length} apps seen recently`;
-
-  document.getElementById("view-recent-btn").addEventListener("click", () => {
-    const list = document.getElementById("recently-viewed-list");
-    const isOpen = list.style.display === "block";
-    list.style.display = isOpen ? "none" : "block";
-    if (!isOpen) {
-      list.innerHTML = recent.length
-        ? recent.map(a => `
-            <a href="app.html?id=${a.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;color:inherit">
-              <img src="${escapeHTML(a.icon || 'assets/placeholder-icon.svg')}" style="width:30px;height:30px;border-radius:7px;background:var(--panel-2)">
-              <span style="font-size:13.5px">${escapeHTML(a.name)}</span>
-            </a>`).join("")
-        : `<div style="color:var(--text-faint);font-size:13px">No apps viewed yet.</div>`;
-    }
-  });
-
-  // ---------- Favorites ----------
-  const favorites = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
-  document.getElementById("favorites-count").textContent = `${favorites.length} apps favorited`;
-
-  document.getElementById("view-favorites-btn").addEventListener("click", () => {
-    const list = document.getElementById("favorites-list");
-    const isOpen = list.style.display === "block";
-    list.style.display = isOpen ? "none" : "block";
-    if (!isOpen) {
-      list.innerHTML = favorites.length
-        ? favorites.map(a => `
-            <a href="app.html?id=${a.id}" style="display:flex;align-items:center;gap:10px;padding:8px 0;color:inherit">
-              <img src="${escapeHTML(a.icon || 'assets/placeholder-icon.svg')}" style="width:30px;height:30px;border-radius:7px;background:var(--panel-2)">
-              <span style="font-size:13.5px">${escapeHTML(a.name)}</span>
-            </a>`).join("")
-        : `<div style="color:var(--text-faint);font-size:13px">No favorites yet.</div>`;
-    }
-  });
-
-  // ---------- Request an app (shortcut) ----------
-  document.getElementById("open-request-btn").addEventListener("click", () => {
-    window.openAppRequestModal?.();
-  });
-
-  // ---------- Reset to defaults (keeps favorites/recently viewed) ----------
-  document.getElementById("reset-defaults-btn").addEventListener("click", () => {
-    if (!confirm("Reset appearance and sound settings to default? Your favorites and history will be kept.")) return;
-    ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
-     "mrzn_sound_enabled", "mrzn_voice_enabled"].forEach(k => localStorage.removeItem(k));
-    showToast("Settings reset! Reloading...", "success");
-    setTimeout(() => window.location.reload(), 1000);
-  });
-
-  // ---------- Clear cache ----------
-  document.getElementById("clear-cache-btn").addEventListener("click", () => {
-    if (!confirm("This will reset all your site preferences (theme, font size, recently viewed, etc). Continue?")) return;
-    ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
-     "mrzn_sound_enabled", "mrzn_voice_enabled", "mrzn_recently_viewed"].forEach(k => localStorage.removeItem(k));
-    showToast("Cache cleared! Reloading...", "success");
-    setTimeout(() => window.location.reload(), 1000);
-  });
-
-  // ---------- Share ----------
-  document.getElementById("share-btn").addEventListener("click", async () => {
-    const shareData = {
-      title: "MRZN Apps & Games",
-      text: "Check out MRZN Apps & Games — apps, games, and reviews!",
-      url: window.location.origin + window.location.pathname.replace("settings.html", "index.html")
-    };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch (e) { /* user cancelled */ }
-    } else {
-      navigator.clipboard?.writeText(shareData.url);
-      showToast("Link copied to clipboard!", "success");
-    }
-  });
-});
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
