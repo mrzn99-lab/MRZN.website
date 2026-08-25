@@ -1,6 +1,7 @@
 /**
- * 🤖 General Purpose AI - ANY Question Answering
- * Not just apps - handles everything
+ * 🤖 Offline AI - No API Keys Needed
+ * Pattern Matching + Database + Bengali NLP
+ * সম্পূর্ণ অফলাইন - কোনো internet requirement নেই
  */
 
 class GeneralAI {
@@ -13,61 +14,41 @@ class GeneralAI {
 
   async init() {
     try {
-      console.log('🤖 Initializing General AI...');
+      console.log('🤖 Initializing Offline AI...');
       await this.waitForDB();
       await this.loadAppData();
+      this.setupPatterns();
       this.isReady = true;
-      console.log('✅ General AI Ready');
+      console.log('✅ AI Ready - No API Keys, Fully Offline');
     } catch (err) {
       console.error('AI init:', err);
       this.isReady = true;
     }
   }
 
-async loadAppData() {
-    try {
-      // LINE 37: পরিবর্তন
-      if (!window.supabaseClient) {
-        console.warn('Supabase not available');
-        return;
-      }
-
-      console.log('🔄 Loading apps from database...');
-
-      // LINE 43: পরিবর্তন
-      const { data: apps, error } = await window.supabaseClient
-        .from('apps')
-        .select('id, name, description, category, rating, review_count, icon_url, downloads, size')
-        .limit(1000);
-
-      if (error) {
-        console.error('❌ Load error:', error.message);
-        this.appCache = [];
-        return;
-      }
-
-      if (!apps) {
-        console.warn('No apps returned');
-        this.appCache = [];
-        return;
-      }
-
-      this.appCache = apps;
-      console.log('✅ Apps loaded: ' + this.appCache.length);
-
-      if (this.appCache.length > 0) {
-        console.log('First app:', this.appCache[0].name);
-      }
-    } catch (err) {
-      console.error('Data load error:', err);
-      this.appCache = [];
-    }
+  async waitForDB() {
+    return new Promise((resolve) => {
+      let tries = 0;
+      const check = () => {
+        if (window.supabaseClient) {
+          console.log('✅ Database ready');
+          resolve();
+        } else if (tries < 50) {
+          tries++;
+          setTimeout(check, 100);
+        } else {
+          console.warn('⚠️ Offline mode');
+          resolve();
+        }
+      };
+      check();
+    });
   }
 
   async loadAppData() {
     try {
       if (!window.supabaseClient) {
-        console.warn('Supabase not available');
+        console.warn('Offline - no database');
         return;
       }
 
@@ -76,18 +57,52 @@ async loadAppData() {
         .select('*')
         .limit(1000);
 
-      if (error) {
-        console.error('Load error:', error);
-        this.appCache = [];
-        return;
-      }
-
       this.appCache = apps || [];
       console.log('✅ Loaded ' + this.appCache.length + ' apps');
     } catch (err) {
       console.error('Data error:', err);
       this.appCache = [];
     }
+  }
+
+  // ============ PATTERNS & RULES ============
+
+  setupPatterns() {
+    // Line 62: Bengali & English patterns
+    this.patterns = {
+      // Greetings
+      greeting: /hello|hi|hey|নমস্কার|হ্যালো|হাই|কীভাবে|কি খবর|কিমন/i,
+      
+      // Farewell
+      farewell: /bye|goodbye|বিদায়|খোদা|আল্লাহ|দেখা হবে/i,
+      
+      // Thanks
+      thanks: /thanks|thank you|ধন্যবাদ|শুকরিয়া|মাশাল্লাহ/i,
+      
+      // Search
+      search: /search|find|খোঁজো|খুঁজুন|দাও|বলো/i,
+      
+      // Details
+      details: /details|about|info|inform|describe|বলো|কিভাবে|কী|সম্পর্কে/i,
+      
+      // Comparison
+      compare: /compare|vs|versus|কোনটা/i,
+      
+      // Rating
+      rating: /rating|rate|review|রেটিং|রিভিউ|মতামত/i,
+      
+      // Best
+      best: /best|top|good|ভাল|সেরা|দারুণ|excellent/i,
+      
+      // Trending
+      trending: /trending|popular|popular|ট্রেন্ডিং|জনপ্রিয়/i,
+      
+      // Help
+      help: /help|command|কমান্ড|সাহায্য|কি করতে|কীভাবে ব্যবহার/i,
+      
+      // Categories
+      category: /categor|type|ধরন|বিভাগ|ক্যাটাগরি/i,
+    };
   }
 
   // ============ UTILITIES ============
@@ -119,18 +134,18 @@ async loadAppData() {
     
     const q = String(query).toLowerCase();
     
-    // Exact match
+    // Exact
     let app = this.appCache.find(a => a?.name?.toLowerCase() === q);
     if (app) return app;
     
-    // Partial match
+    // Contains
     app = this.appCache.find(a =>
       a?.name?.toLowerCase().includes(q) ||
       a?.description?.toLowerCase().includes(q)
     );
     if (app) return app;
     
-    // Typo match
+    // Typo-tolerant
     let best = null, minDist = 3;
     this.appCache.forEach(a => {
       const dist = this.levenshtein(q, a?.name);
@@ -145,6 +160,7 @@ async loadAppData() {
 
   searchApps(query) {
     if (!query || this.appCache.length === 0) return [];
+    
     const q = String(query).toLowerCase();
     return this.appCache.filter(a =>
       a?.name?.toLowerCase().includes(q) ||
@@ -153,171 +169,83 @@ async loadAppData() {
     ).slice(0, 5);
   }
 
-  // ============ RESPONSE BUILDERS ============
-
-  handleAppSearch(input) {
-    const terms = String(input).split(/\s+/).filter(w => 
-      !['search', 'find', 'খোঁজো', 'খুঁজুন', 'app', 'apps', 'app्प'].includes(w)
-    );
-    const query = terms.join(' ') || String(input).replace(/search|find|খোঁজো|খুঁজুন/gi, '').trim();
-    
-    if (!query) {
-      return '🔍 What app are you looking for? Tell me the app name.';
-    }
-
-    const results = this.searchApps(query);
-    
-    if (results.length === 0) {
-      return '❌ Could not find "' + query + '"\n\nTry:\n• Search differently\n• "best apps"\n• "trending"\n• "categories"';
-    }
-
-    let response = '✅ Found ' + results.length + ' app(s):\n\n';
-    results.forEach((a, i) => {
-      response += (i+1) + '. ' + a.name + ' ⭐' + (a.rating?.toFixed(1) || 'N/A') + '/5\n';
-    });
-    response += '\n📝 Type "details [app name]" to learn more';
-    
-    return response;
+  getTopApps(limit = 5) {
+    return [...this.appCache]
+      .filter(a => a?.rating)
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, limit);
   }
 
-  handleAppDetails(input) {
-    const name = String(input).replace(/details|about|info|সম্পর্কে|বিবরণ/gi, '').trim();
-    if (!name) return '📱 Which app? Example: "details Termux"';
-
-    const app = this.findApp(name);
-    if (!app) return '❌ App "' + name + '" not found';
-
-    let response = '📱 ' + app.name + '\n';
-    response += '━━━━━━━━━━━\n';
-    response += '⭐ Rating: ' + (app.rating?.toFixed(1) || 'N/A') + '/5\n';
-    response += '👥 Reviews: ' + (app.review_count || 0) + '\n';
-    response += '📂 Category: ' + (app.category || 'N/A') + '\n';
-    response += '📦 Size: ' + (app.size || 'N/A') + '\n';
-    response += '📝 ' + (app.description?.substring(0, 200) || 'No description');
-    
-    return response;
+  getTrendingApps(limit = 5) {
+    return [...this.appCache]
+      .filter(a => a?.review_count)
+      .sort((a, b) => (b.review_count || 0) - (a.review_count || 0))
+      .slice(0, limit);
   }
 
-  handleComparison(input) {
-    const parts = String(input).split(/\svs\s|vs\s|vs/i);
-    if (parts.length < 2) return '⚖️ Usage: "compare app1 vs app2"';
+  // ============ RESPONSE GENERATORS ============
 
-    const app1 = this.findApp(parts[0]);
-    const app2 = this.findApp(parts[1]);
-
-    if (!app1 || !app2) return '❌ Could not find both apps';
-
-    let response = '⚖️ ' + app1.name + ' vs ' + app2.name + '\n';
-    response += '⭐ Rating: ' + (app1.rating?.toFixed(1) || 'N/A') + ' vs ' + (app2.rating?.toFixed(1) || 'N/A') + '\n';
-    response += '👥 Reviews: ' + (app1.review_count || 0) + ' vs ' + (app2.review_count || 0) + '\n';
-    response += '📂 Category: ' + (app1.category || 'N/A') + ' vs ' + (app2.category || 'N/A');
-    
-    if (app1.rating > app2.rating) {
-      response += '\n\n🏆 Winner: ' + app1.name;
-    } else if (app2.rating > app1.rating) {
-      response += '\n\n🏆 Winner: ' + app2.name;
-    } else {
-      response += '\n\n🤝 Tie!';
-    }
-    
-    return response;
+  generateGreeting() {
+    const greetings = [
+      '👋 Hello! How can I help you?',
+      '😊 Hi there! What do you need?',
+      '🙏 Namaste! Ask me anything!',
+      '👋 হ্যালো! কি চাই?',
+      '😊 নমস্কার! বলো কি সাহায্য করব?',
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
-  handleGeneralQuestion(input) {
-    const msg = String(input).toLowerCase();
-    
-    // Greetings
-    const greetings = {
-      'hello': '👋 Hello! I\'m MRZN AI. How can I help you today?',
-      'hi': '😊 Hey there! What can I do for you?',
-      'hey': '👋 Hey! Ask me anything!',
-      'হাই': '👋 হ্যালো! আমি MRZN AI। আপনি কিভাবে আছেন?',
-      'হ্যালো': '😊 নমস্কার! আমাকে কিছু জিজ্ঞাসা করুন।',
-      'কেমন': '😊 আমি ভালো আছি, ধন্যবাদ! আপনি কিভাবে আছেন?',
-      'thanks': '😊 You\'re welcome!',
-      'ধন্যবাদ': '😊 স্বাগতম!',
-      'thanks': '😊 Anytime!',
-      'ok': '👍 Got it!',
-      'okay': '✅ Sure!',
-    };
-
-    for (const [key, val] of Object.entries(greetings)) {
-      if (msg.includes(key)) return val;
-    }
-
-    // Personal questions
-    if (msg.includes('আপনার নাম') || msg.includes('name')) {
-      return '🤖 I\'m MRZN AI - an intelligent assistant built to help you find apps and answer any question!\n\nআমি MRZN AI - একটি বুদ্ধিমান সহায়ক যা আপনাকে অ্যাপ খুঁজে পেতে এবং যেকোনো প্রশ্নের উত্তর দিতে সাহায্য করি।';
-    }
-
-    if (msg.includes('আপনি কে') || msg.includes('who are')) {
-      return '🤖 I\'m MRZN AI, your intelligent assistant!\n\nI can:\n✅ Help you find apps\n✅ Answer any question\n✅ Have conversations in Bengali, Banglish, or English\n✅ Understand typos and errors\n\nJust ask me anything!';
-    }
-
-    if (msg.includes('কী করতে পারো') || msg.includes('what can') || msg.includes('কী পার')) {
-      return '🤖 I can help with:\n\n📱 Apps:\n• Search for apps\n• Show app details\n• Compare apps\n• See ratings\n\n💬 General:\n• Answer any question\n• Have conversations\n• Help with information\n\nJust ask! I understand Bengali, Banglish, English & typos!';
-    }
-
-    // App-related questions
-    if (msg.includes('app') || msg.includes('অ্যাপ') || msg.includes('game') || msg.includes('গেম')) {
-      const topApps = [...this.appCache]
-        .filter(a => a?.rating)
-        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-        .slice(0, 3);
-
-      if (topApps.length > 0) {
-        let response = '📱 Popular apps:\n\n';
-        topApps.forEach((a, i) => {
-          response += (i+1) + '. ' + a.name + ' ⭐' + a.rating.toFixed(1) + '\n';
-        });
-        response += '\n📝 Type "search [app name]" to find any app\n📝 Type "details [app]" for info';
-        return response;
-      }
-      
-      return 'I help you find apps!\n\nTry:\n• "search Termux"\n• "best apps"\n• "trending"\n• "categories"';
-    }
-
-    // Time/Date questions
-    if (msg.includes('সময়') || msg.includes('তারিখ') || msg.includes('কোন দিন') || msg.includes('আজ')) {
-      const now = new Date();
-      return '📅 ' + now.toLocaleDateString('bn-BD', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long'
-      }) + '\n⏰ ' + now.toLocaleTimeString('bn-BD');
-    }
-
-    // Default helpful response
-    return '😊 I\'m here to help!\n\n🤖 I can:\n• Find apps (search, compare, ratings)\n• Answer questions\n• Chat in Bengali/English\n• Understand typos\n\nJust ask me anything!\n\nType "help" to see all commands.';
+  generateThankYou() {
+    const responses = [
+      '😊 You\'re welcome!',
+      '✨ Happy to help!',
+      '👍 Anytime!',
+      '😊 স্বাগতম!',
+      '✨ আনন্দিত!',
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
-  handleHelp() {
-    return `🤖 MRZN AI - Complete Help
-━━━━━━━━━━━━━━━━━━━━━━━
+  generateHelp() {
+    return `🤖 MRZN AI - Offline & Unlimited
+━━━━━━━━━━━━━━━━━━━━━━
+✅ No API keys needed
+✅ Fully offline
+✅ আনলিমিটেড উত্তর
 
-📱 APP COMMANDS:
-  search [app] - Find an app
-  details [app] - Full information
-  compare [app1] vs [app2] - Compare
-  rating [app] - User ratings
-  best apps - Top rated
-  trending - Most popular
-  categories - All categories
+📱 COMMANDS:
+  search [app]
+  details [app]
+  best apps
+  trending
+  rating [app]
+  categories
+  compare [app1] vs [app2]
 
-💬 GENERAL:
-  Just ask any question!
-  I answer in Bengali, Banglish, English
+💬 CHAT:
+  Just ask anything!
+  Ask in Bengali or English
 
 🎯 EXAMPLES:
   "find Termux"
   "details AIDE"
-  "best games"
-  "hello" - Start conversation
-  "আপনার নাম কী?" - Ask in Bengali
-  "help" - This message
+  "hello"
+  "Termux vs AIDE"
+  "সেরা গেমস কি?"`;
+  }
 
-💡 I understand typos & slang!`;
+  generateGeneral(input) {
+    // Line 266: Simple but effective responses
+    const responses = [
+      'I\'m MRZN AI. I can help you find apps! 📱',
+      'Ask me about apps or chat about anything! 😊',
+      'I\'m here to help! Type "help" for commands.',
+      'আমি MRZN AI। আপনি কি চাইছেন? 🤖',
+      'অ্যাপ খুঁজতে চান? নাকি কিছু জিজ্ঞাসা করবেন? 📱',
+      'আমি এখানে আছি! কি সাহায্য করব? 😊',
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   }
 
   // ============ MAIN PROCESSOR ============
@@ -333,49 +261,159 @@ async loadAppData() {
 
       let response = '';
 
-      // CATEGORIZE & RESPOND
-      if (msg.includes('search') || msg.includes('find') || msg.includes('খোঁজো') || msg.includes('খুঁজুন')) {
-        response = this.handleAppSearch(input);
+      // Line 296: Check patterns in order
+
+      // GREETING
+      if (this.patterns.greeting.test(msg)) {
+        response = this.generateGreeting();
       }
-      else if (msg.includes('details') || msg.includes('about') || msg.includes('info') || msg.includes('সম্পর্কে')) {
-        response = this.handleAppDetails(input);
+
+      // THANKS
+      else if (this.patterns.thanks.test(msg)) {
+        response = this.generateThankYou();
       }
-      else if (msg.includes(' vs ') || msg.includes('compare')) {
-        response = this.handleComparison(input);
+
+      // HELP
+      else if (this.patterns.help.test(msg)) {
+        response = this.generateHelp();
       }
-      else if (msg.includes('rating') || msg.includes('rate') || msg.includes('রেটিং')) {
-        const name = String(input).replace(/rating|rate|রেটিং/gi, '').trim();
-        const app = this.findApp(name);
-        if (app) {
-          const stars = '⭐'.repeat(Math.round(app.rating || 0));
-          response = '📊 ' + app.name + '\n' + app.rating.toFixed(1) + '/5 ' + stars + '\n👥 ' + app.review_count + ' reviews';
+
+      // SEARCH APP
+      else if (this.patterns.search.test(msg)) {
+        const terms = String(input).split(/\s+/).filter(w => 
+          !['search', 'find', 'খোঁজো', 'খুঁজুন', 'দাও', 'app', 'apps'].includes(w.toLowerCase())
+        );
+        const query = terms.join(' ') || String(input).replace(/search|find|খোঁজো|খুঁজুন|দাও/gi, '').trim();
+        
+        if (query && this.appCache.length > 0) {
+          const results = this.searchApps(query);
+          
+          if (results.length > 0) {
+            response = '✅ Found ' + results.length + ' app(s):\n\n';
+            results.forEach((a, i) => {
+              response += (i+1) + '. ' + a.name + ' ⭐' + (a.rating?.toFixed(1) || '?') + '/5\n';
+            });
+            response += '\n📝 Type "details [app]" for more';
+          } else {
+            response = '❌ No apps found for "' + query + '"';
+          }
+        } else if (!query) {
+          response = '🔍 What app are you looking for?';
         } else {
-          response = '❌ App not found';
+          response = '⚠️ Database not ready. Try again!';
         }
       }
-      else if (msg.includes('best') || msg.includes('top') || msg.includes('সেরা')) {
-        const top = [...this.appCache]
-          .filter(a => a?.rating)
-          .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-          .slice(0, 5);
-        response = top.length > 0 ? '⭐ Top Rated:\n\n' + top.map((a, i) => (i+1) + '. ' + a.name + ' (' + a.rating.toFixed(1) + '/5)').join('\n') : 'No apps yet';
+
+      // DETAILS
+      else if (this.patterns.details.test(msg)) {
+        const name = String(input).replace(/details|about|info|বলো|কিভাবে|কী|সম্পর্কে/gi, '').trim();
+        
+        if (name && this.appCache.length > 0) {
+          const app = this.findApp(name);
+          
+          if (app) {
+            response = '📱 ' + app.name + '\n';
+            response += '━━━━━━━━━\n';
+            response += '⭐ ' + (app.rating?.toFixed(1) || 'N/A') + '/5\n';
+            response += '👥 ' + (app.review_count || 0) + ' reviews\n';
+            response += '📂 ' + (app.category || 'N/A') + '\n';
+            response += '📝 ' + (app.description?.substring(0, 150) || 'No description');
+          } else {
+            response = '❌ App "' + name + '" not found';
+          }
+        } else {
+          response = '📱 Which app? Example: "details Termux"';
+        }
       }
-      else if (msg.includes('trending') || msg.includes('popular') || msg.includes('ট্রেন্ডিং')) {
-        const trend = [...this.appCache]
-          .filter(a => a?.review_count)
-          .sort((a, b) => (b.review_count || 0) - (a.review_count || 0))
-          .slice(0, 5);
-        response = trend.length > 0 ? '🔥 Trending:\n\n' + trend.map((a, i) => (i+1) + '. ' + a.name + ' (' + a.review_count + ' reviews)').join('\n') : 'No apps yet';
+
+      // COMPARE
+      else if (this.patterns.compare.test(msg)) {
+        const parts = String(input).split(/\svs\s|vs\s|vs/i);
+        
+        if (parts.length >= 2 && this.appCache.length > 0) {
+          const app1 = this.findApp(parts[0]);
+          const app2 = this.findApp(parts[1]);
+          
+          if (app1 && app2) {
+            response = '⚖️ ' + app1.name + ' vs ' + app2.name + '\n';
+            response += '━━━━━━━━━━━━━━\n';
+            response += '⭐ ' + (app1.rating?.toFixed(1) || '?') + ' vs ' + (app2.rating?.toFixed(1) || '?') + '\n';
+            response += '👥 ' + (app1.review_count || 0) + ' vs ' + (app2.review_count || 0) + ' reviews\n';
+            
+            if ((app1.rating || 0) > (app2.rating || 0)) {
+              response += '\n🏆 ' + app1.name + ' wins!';
+            } else if ((app2.rating || 0) > (app1.rating || 0)) {
+              response += '\n🏆 ' + app2.name + ' wins!';
+            } else {
+              response += '\n🤝 It\'s a tie!';
+            }
+          } else {
+            response = '❌ Could not find both apps';
+          }
+        } else {
+          response = '⚖️ Usage: "compare [app1] vs [app2]"';
+        }
       }
-      else if (msg.includes('categor')) {
-        const cats = [...new Set(this.appCache.map(a => a?.category).filter(Boolean))].sort();
-        response = '📂 Categories:\n' + cats.slice(0, 10).join(', ');
+
+      // BEST
+      else if (this.patterns.best.test(msg)) {
+        if (this.appCache.length > 0) {
+          const topApps = this.getTopApps(5);
+          
+          if (topApps.length > 0) {
+            response = '⭐ Top Rated Apps:\n\n';
+            topApps.forEach((a, i) => {
+              response += (i+1) + '. ' + a.name + ' (' + a.rating.toFixed(1) + '/5)\n';
+            });
+          } else {
+            response = '📱 No rated apps yet';
+          }
+        }
       }
-      else if (msg.includes('help')) {
-        response = this.handleHelp();
+
+      // TRENDING
+      else if (this.patterns.trending.test(msg)) {
+        if (this.appCache.length > 0) {
+          const trending = this.getTrendingApps(5);
+          
+          if (trending.length > 0) {
+            response = '🔥 Trending Apps:\n\n';
+            trending.forEach((a, i) => {
+              response += (i+1) + '. ' + a.name + ' (' + (a.review_count || 0) + ' reviews)\n';
+            });
+          } else {
+            response = '📱 No apps yet';
+          }
+        }
       }
+
+      // RATING
+      else if (this.patterns.rating.test(msg)) {
+        const name = String(input).replace(/rating|rate|review|রেটিং|রিভিউ|মতামত/gi, '').trim();
+        
+        if (name && this.appCache.length > 0) {
+          const app = this.findApp(name);
+          
+          if (app) {
+            const stars = '⭐'.repeat(Math.round(app.rating || 0)) + '☆'.repeat(Math.max(0, 5 - Math.round(app.rating || 0)));
+            response = '📊 ' + app.name + '\n' + (app.rating?.toFixed(1) || '?') + '/5 ' + stars + '\n👥 ' + (app.review_count || 0) + ' reviews';
+          } else {
+            response = '❌ App not found';
+          }
+        }
+      }
+
+      // CATEGORIES
+      else if (this.patterns.category.test(msg)) {
+        if (this.appCache.length > 0) {
+          const cats = [...new Set(this.appCache.map(a => a?.category).filter(Boolean))].sort();
+          response = '📂 Categories:\n' + cats.slice(0, 10).join(', ');
+        }
+      }
+
+      // DEFAULT
       else {
-        response = this.handleGeneralQuestion(input);
+        response = this.generateGeneral(input);
       }
 
       this.history.push({ role: 'assistant', content: response });
@@ -384,7 +422,7 @@ async loadAppData() {
       return response;
     } catch (error) {
       console.error('Process error:', error);
-      return '😊 I\'m here to help! Ask me anything - apps, questions, or just chat!';
+      return 'I\'m here to help! Ask me about apps. 😊';
     }
   }
 }
@@ -396,4 +434,4 @@ if (document.readyState === 'loading') {
   });
 } else {
   window.generalAI = new GeneralAI();
-  }
+}
