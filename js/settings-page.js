@@ -1,6 +1,7 @@
 /**
  * ⚙️ Settings Page - Complete Logic
- * Language + Appearance + Sound + Data Settings
+ * Appearance + Sound + Data Settings
+ * (Language moved to Sidebar)
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -8,144 +9,11 @@ document.addEventListener("DOMContentLoaded", () => {
   
   refreshNavAuth();
   
-  // Language FIRST
- // loadLanguageSettings().then(() => {
-   // setupAppearanceSettings();
-//    setupSoundSettings();
-///    setupDataSettings();
-//  });
-//});
-
-// ============ LANGUAGE SETTINGS ============
-
-async function loadLanguageSettings() {
-  try {
-    console.log('🌍 Loading language settings...');
-
-    if (!window.languageManager) {
-      console.warn('Language manager not ready');
-      return;
-    }
-
-    // Check if already created
-    if (document.getElementById('language-settings-section')) {
-      return;
-    }
-
-    // Create language section
-    const langSection = document.createElement('div');
-    langSection.id = 'language-settings-section';
-    langSection.className = 'panel settings-section';
-    langSection.style.marginTop = '0px';
-    langSection.style.marginBottom = '30px';
-    langSection.style.borderTop = '2px solid var(--cyan)';
-    langSection.style.paddingTop = '20px';
-
-    const languages = window.languageManager.getLanguages();
-
-    // Build language options
-    let langOptionsHTML = '';
-    for (const [code, name] of Object.entries(languages)) {
-      const selected = window.languageManager.currentLang === code ? 'selected' : '';
-      langOptionsHTML += `<option value="${code}" ${selected}>${name}</option>`;
-    }
-
-    langSection.innerHTML = `
-      <div style="margin-bottom: 20px;">
-        <h2 class="section-title" style="margin-bottom: 15px; margin-top: 0;">🌍 Language Settings</h2>
-        
-        <div style="background: rgba(0, 229, 255, 0.05); padding: 14px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid var(--cyan);">
-          <label style="
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--text);
-          ">Select Language (100+ languages)</label>
-          
-          <select id="language-select" style="
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--line);
-            border-radius: 6px;
-            background: var(--void);
-            color: var(--text);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-          ">
-            ${langOptionsHTML}
-          </select>
-
-          <small style="display: block; margin-top: 10px; color: var(--text-faint);">
-            ✅ Changes apply instantly to entire website
-          </small>
-        </div>
-
-        <div id="language-status" style="
-          padding: 10px;
-          border-radius: 6px;
-          text-align: center;
-          font-size: 13px;
-          display: none;
-          font-weight: 600;
-        "></div>
-
-        <div style="
-          background: rgba(34, 197, 94, 0.1);
-          border: 1px solid rgba(34, 197, 94, 0.3);
-          padding: 12px;
-          border-radius: 6px;
-          margin-top: 15px;
-          font-size: 13px;
-          line-height: 1.5;
-        ">
-          <strong>💡 Tip:</strong> Your language preference is saved. It will be remembered when you visit again.
-        </div>
-      </div>
-    `;
-
-    // Insert into page (first element)
-    const mainContent = document.querySelector('main') || 
-                       document.querySelector('[role="main"]') ||
-                       document.body;
-
-    mainContent.insertBefore(langSection, mainContent.firstChild);
-
-    // Event listener
-    document.getElementById('language-select').addEventListener('change', async (e) => {
-      const langCode = e.target.value;
-      const status = document.getElementById('language-status');
-
-      status.style.display = 'block';
-      status.style.background = 'rgba(0, 229, 255, 0.1)';
-      status.style.color = 'var(--cyan)';
-      status.textContent = '🔄 Changing language...';
-
-      try {
-        await window.languageManager.changeLanguage(langCode);
-        
-        status.style.background = 'rgba(34, 197, 94, 0.1)';
-        status.style.color = '#86efac';
-        status.textContent = '✅ Language changed to ' + window.languageManager.getLanguageName(langCode);
-        
-        setTimeout(() => {
-          status.style.display = 'none';
-        }, 2500);
-      } catch (error) {
-        status.style.background = 'rgba(220, 38, 38, 0.1)';
-        status.style.color = '#fca5a5';
-        status.textContent = '❌ Error: ' + error.message;
-      }
-    });
-
-    console.log('✅ Language settings loaded');
-
-  } catch (error) {
-    console.error('Language settings error:', error);
-  }
-}
+  // Direct setup without language (language is in sidebar now)
+  setupAppearanceSettings();
+  setupSoundSettings();
+  setupDataSettings();
+});
 
 // ============ APPEARANCE SETTINGS ============
 
@@ -175,6 +43,7 @@ function setupAppearanceSettings() {
         document.querySelectorAll("#font-size-group .seg-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         applyStoredSettings();
+        showToast("✅ Font size updated!", "success");
       });
     });
 
