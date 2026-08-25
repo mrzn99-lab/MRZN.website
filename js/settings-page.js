@@ -1,20 +1,22 @@
 /**
  * ⚙️ Settings Page - Complete Logic
- * Language + Appearance + Sound Settings
+ * Language + Appearance + Sound + Data Settings
  */
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log('⚙️ Loading settings...');
   
   refreshNavAuth();
-  loadLanguageSettings();
-  setupAppearanceSettings();
-  setupSoundSettings();
-  setupDataSettings();
+  
+  // Language FIRST
+  loadLanguageSettings().then(() => {
+    setupAppearanceSettings();
+    setupSoundSettings();
+    setupDataSettings();
+  });
 });
 
 // ============ LANGUAGE SETTINGS ============
-// Line 16
 
 async function loadLanguageSettings() {
   try {
@@ -25,21 +27,23 @@ async function loadLanguageSettings() {
       return;
     }
 
-    // Line 25: Check if already created
+    // Check if already created
     if (document.getElementById('language-settings-section')) {
       return;
     }
 
-    // Line 29: Create language section
+    // Create language section
     const langSection = document.createElement('div');
     langSection.id = 'language-settings-section';
     langSection.className = 'panel settings-section';
-    langSection.style.marginTop = '20px';
-    langSection.style.marginBottom = '20px';
+    langSection.style.marginTop = '0px';
+    langSection.style.marginBottom = '30px';
+    langSection.style.borderTop = '2px solid var(--cyan)';
+    langSection.style.paddingTop = '20px';
 
     const languages = window.languageManager.getLanguages();
 
-    // Line 38: Build language options
+    // Build language options
     let langOptionsHTML = '';
     for (const [code, name] of Object.entries(languages)) {
       const selected = window.languageManager.currentLang === code ? 'selected' : '';
@@ -48,9 +52,9 @@ async function loadLanguageSettings() {
 
     langSection.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <h2 class="section-title" style="margin-bottom: 15px;">🌍 Language Settings</h2>
+        <h2 class="section-title" style="margin-bottom: 15px; margin-top: 0;">🌍 Language Settings</h2>
         
-        <div style="background: rgba(0, 229, 255, 0.05); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+        <div style="background: rgba(0, 229, 255, 0.05); padding: 14px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid var(--cyan);">
           <label style="
             display: block;
             margin-bottom: 10px;
@@ -102,14 +106,14 @@ async function loadLanguageSettings() {
       </div>
     `;
 
-    // Line 103: Insert into page
+    // Insert into page (first element)
     const mainContent = document.querySelector('main') || 
                        document.querySelector('[role="main"]') ||
                        document.body;
 
     mainContent.insertBefore(langSection, mainContent.firstChild);
 
-    // Line 110: Event listener
+    // Event listener
     document.getElementById('language-select').addEventListener('change', async (e) => {
       const langCode = e.target.value;
       const status = document.getElementById('language-status');
@@ -144,13 +148,12 @@ async function loadLanguageSettings() {
 }
 
 // ============ APPEARANCE SETTINGS ============
-// Line 149
 
 function setupAppearanceSettings() {
   try {
     console.log('🎨 Loading appearance settings...');
 
-    // Line 154: Accent color
+    // Accent color
     const savedAccent = localStorage.getItem("mrzn_accent") || "blue";
     document.querySelectorAll(".swatch").forEach(sw => {
       sw.classList.toggle("active", sw.dataset.color === savedAccent);
@@ -163,7 +166,7 @@ function setupAppearanceSettings() {
       });
     });
 
-    // Line 168: Font size
+    // Font size
     const savedFontSize = localStorage.getItem("mrzn_font_size") || "medium";
     document.querySelectorAll("#font-size-group .seg-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.size === savedFontSize);
@@ -172,11 +175,10 @@ function setupAppearanceSettings() {
         document.querySelectorAll("#font-size-group .seg-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         applyStoredSettings();
-        showToast("✅ Font size updated!", "success");
       });
     });
 
-    // Line 184: Simple toggles
+    // Simple toggles
     bindToggle("compact-toggle", "mrzn_compact");
     bindToggle("animation-toggle", "mrzn_animations", true);
     bindToggle("datasaver-toggle", "mrzn_datasaver");
@@ -189,13 +191,12 @@ function setupAppearanceSettings() {
 }
 
 // ============ SOUND SETTINGS ============
-// Line 197
 
 function setupSoundSettings() {
   try {
     console.log('🔊 Loading sound settings...');
 
-    // Line 202: Sound toggles
+    // Sound toggles
     bindToggle("sound-toggle", "mrzn_sound_enabled", true);
     bindToggle("voice-toggle", "mrzn_voice_enabled", true);
 
@@ -207,13 +208,12 @@ function setupSoundSettings() {
 }
 
 // ============ DATA SETTINGS ============
-// Line 214
 
 function setupDataSettings() {
   try {
     console.log('📊 Loading data settings...');
 
-    // Line 219: Recently viewed
+    // Recently viewed
     const recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
     const recentCountEl = document.getElementById("recently-viewed-count");
     if (recentCountEl) {
@@ -239,7 +239,7 @@ function setupDataSettings() {
       });
     }
 
-    // Line 249: Favorites
+    // Favorites
     const favorites = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
     const favCountEl = document.getElementById("favorites-count");
     if (favCountEl) {
@@ -265,7 +265,7 @@ function setupDataSettings() {
       });
     }
 
-    // Line 279: Request an app shortcut
+    // Request an app shortcut
     const openReqBtn = document.getElementById("open-request-btn");
     if (openReqBtn) {
       openReqBtn.addEventListener("click", () => {
@@ -273,7 +273,7 @@ function setupDataSettings() {
       });
     }
 
-    // Line 286: Reset to defaults
+    // Reset to defaults
     const resetBtn = document.getElementById("reset-defaults-btn");
     if (resetBtn) {
       resetBtn.addEventListener("click", () => {
@@ -285,19 +285,19 @@ function setupDataSettings() {
       });
     }
 
-    // Line 300: Clear cache
+    // Clear cache
     const clearBtn = document.getElementById("clear-cache-btn");
     if (clearBtn) {
       clearBtn.addEventListener("click", () => {
         if (!confirm("This will reset all your site preferences. Continue?")) return;
         ["mrzn_accent", "mrzn_font_size", "mrzn_compact", "mrzn_animations", "mrzn_datasaver",
-         "mrzn_sound_enabled", "mrzn_voice_enabled", "mrzn_recently_viewed", "mrzn_favorites"].forEach(k => localStorage.removeItem(k));
+         "mrzn_sound_enabled", "mrzn_voice_enabled", "mrzn_recently_viewed", "mrzn_favorites", "mrzn_language"].forEach(k => localStorage.removeItem(k));
         showToast("✅ Cache cleared! Reloading...", "success");
         setTimeout(() => window.location.reload(), 1000);
       });
     }
 
-    // Line 314: Share button
+    // Share button
     const shareBtn = document.getElementById("share-btn");
     if (shareBtn) {
       shareBtn.addEventListener("click", async () => {
@@ -328,7 +328,6 @@ function setupDataSettings() {
 }
 
 // ============ HELPER FUNCTIONS ============
-// Line 350
 
 function bindToggle(id, key, invertedOnMeansOn = false) {
   try {
