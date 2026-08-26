@@ -1,111 +1,99 @@
-/**
- * 📦 Download Sources Manager
- */
 
 class DownloadSourcesManager {
-  static async displayDownloadSources(appId) {
+  constructor() {
+    this.sources = {
+      hosted: 'Hosted APK',
+      external: 'External Link'
+    };
+  }
+
+  getSourceBadge(type) {
+    const badges = {
+      hosted: '📦',
+      external: '🔗'
+    };
+    return badges[type] || '📥';
+  }
+
+  async renderDownloadSources(app, container) {
     try {
-      if (!appId || !window.supabaseClient) return;
+      console.log('📥 Rendering download sources...');
 
-      const { data: app } = await window.supabaseClient
-        .from('apps')
-        .select('source_type,source_url,apk_size_mb,min_android_version')
-        .eq('id', appId)
-        .single();
-
-      if (!app) return;
-
-      const container = document.getElementById('download-sources');
       if (!container) return;
 
-      const sourceType = app.source_type || 'play_store';
-      let html = '';
+      let html = `
+        <div style="margin-bottom: 30px;">
+          <h2 style="margin-bottom: 16px;">📥 Download</h2>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+      `;
 
-      // Play Store
-      if (sourceType === 'play_store' || sourceType === 'both') {
+      // Hosted APK
+      if (app.source_url && app.source_type === 'hosted') {
         html += `
-          <div class="download-option" onclick="window.open('https://play.google.com/store/apps/details?id=${appId}','_blank')">
-            <div class="download-option-icon">▶️</div>
-            <div class="download-option-name">Play Store</div>
-            <div class="download-option-meta">Official</div>
-            <button class="btn-download">Download</button>
-          </div>
+          <a href="${app.source_url}" download style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--panel-2);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.2s;
+          " onmouseover="this.style.background='rgba(0, 229, 255, 0.1)'" onmouseout="this.style.background='var(--panel-2)'">
+            <div style="font-size: 24px;">📦</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; margin-bottom: 4px;">Download APK</div>
+              <div style="font-size: 12px; color: var(--text-dim);">Direct Download • ${app.apk_size_mb ? app.apk_size_mb + 'MB' : 'Size N/A'}</div>
+            </div>
+            <div style="font-size: 20px;">→</div>
+          </a>
         `;
       }
 
-      // Hosted
-      if ((sourceType === 'hosted' || sourceType === 'both') && app.source_url) {
-        try {
-          const url = sourceType === 'both' ? JSON.parse(app.source_url).hosted : app.source_url;
-          if (url) {
-            html += `
-              <div class="download-option" onclick="window.open('${url}','_blank')">
-                <div class="download-option-icon">📥</div>
-                <div class="download-option-name">Direct</div>
-                <div class="download-option-meta">Hosted</div>
-                <button class="btn-download">Download</button>
-              </div>
-            `;
-          }
-        } catch (e) {}
-      }
-
-      // External
-      if (sourceType === 'external' && app.source_url) {
-        const name = this.getSourceName(app.source_url);
+      // External Link
+      if (app.source_url && app.source_type === 'external') {
         html += `
-          <div class="download-option" onclick="window.open('${app.source_url}','_blank')">
-            <div class="download-option-icon">🔗</div>
-            <div class="download-option-name">${name}</div>
-            <div class="download-option-meta">Third Party</div>
-            <button class="btn-download">Download</button>
-          </div>
+          <a href="${app.source_url}" target="_blank" rel="noopener" style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--panel-2);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.2s;
+          " onmouseover="this.style.background='rgba(0, 229, 255, 0.1)'" onmouseout="this.style.background='var(--panel-2)'">
+            <div style="font-size: 24px;">🔗</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; margin-bottom: 4px;">External Source</div>
+              <div style="font-size: 12px; color: var(--text-dim);">Open in Browser</div>
+            </div>
+            <div style="font-size: 20px;">→</div>
+          </a>
         `;
-        
-        const warning = document.getElementById('source-warning');
-        if (warning) {
-          warning.style.display = 'block';
-          const text = document.getElementById('warning-text');
-          if (text) text.textContent = 'This app is from a third-party source. Download at your own risk.';
-        }
       }
 
-      // Info
-      const info = [];
-      if (app.apk_size_mb) info.push('📦 ' + app.apk_size_mb + 'MB');
-      if (app.min_android_version) info.push('📱 Android ' + app.min_android_version + '+');
-      
-      if (info.length > 0) {
-        html += '<div style="grid-column:1/-1;font-size:12px;color:#888;text-align:center;margin-top:8px;padding:12px;background:rgba(0,229,255,0.05);border-radius:6px;">' + info.join(' • ') + '</div>';
-      }
+      html += `
+          </div>
+        </div>
+      `;
 
       container.innerHTML = html;
+      console.log('✅ Download sources rendered');
+
     } catch (error) {
-      console.error('Download sources error:', error);
+      console.error('Render error:', error);
     }
   }
-
-  static getSourceName(url) {
-    const domain = (url || '').toLowerCase();
-    if (domain.includes('f-droid')) return 'F-Droid';
-    if (domain.includes('uptodown')) return 'Uptodown';
-    if (domain.includes('apkpure')) return 'APK Pure';
-    if (domain.includes('apkmirror')) return 'APK Mirror';
-    if (domain.includes('github')) return 'GitHub';
-    return 'Third Party';
-  }
-
-  static getSourceBadge(sourceType) {
-    const badges = {
-      play_store: '🏪 Play Store',
-      hosted: '📥 Hosted',
-      external: '🔗 External',
-      both: '📦 Multiple'
-    };
-    return badges[sourceType] || '❓ Unknown';
-  }
 }
 
-if (!window.DownloadSourcesManager) {
-  window.DownloadSourcesManager = DownloadSourcesManager;
-}
+// Initialize
+const downloadManager = new DownloadSourcesManager();
+
+window.renderDownloadSources = function(app, container) {
+  downloadManager.renderDownloadSources(app, container);
+};
