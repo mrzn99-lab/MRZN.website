@@ -1,221 +1,144 @@
-/**
- * 📱 App Details Page - Complete
- * Load and display app information
- */
+/* ===================== APP DETAIL PAGE LOGIC ===================== */
 
-let currentApp = null;
+let CURRENT_APP_ID = null;
+let CURRENT_SESSION = null;
+let SELECTED_RATING = 0;
+let CURRENT_APP = null; // Store app data for translation
 
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log('📱 Loading app details...');
-  
-  // Get app ID from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const appId = urlParams.get('id');
+  refreshNavAuth();
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  CURRENT_SESSION = session;
 
-  if (!appId) {
-    console.error('❌ No app ID provided');
-    showError('App not found');
+  CURRENT_APP_ID = qs("id");
+  if (!CURRENT_APP_ID) {
+    document.getElementById("detail-wrap").innerHTML = `<div class="empty-state">App not found.</div>`;
     return;
   }
 
-  console.log('🔍 Loading app:', appId);
+  await loadAppDetail();
 
-  try {
-    // Wait for database
-    await waitForDatabase();
-
-    // Load app
-    await loadAppDetail(appId);
-
-    // Apply language translation
-    await applyLanguageToAppDetails();
-
-  } catch (error) {
-    console.error('Error:', error);
-    showError('Error loading app');
-  }
+  // Listen for language changes
+  window.addEventListener('languageChanged', () => {
+    applyLanguageTranslation();
+  });
 });
 
-// ============ LOAD APP ============
-
-async function waitForDatabase() {
-  return new Promise((resolve) => {
-    let tries = 0;
-    const check = () => {
-      if (window.supabaseClient) {
-        console.log('✅ Database ready');
-        resolve();
-      } else if (tries < 50) {
-        tries++;
-        setTimeout(check, 100);
-      } else {
-        console.warn('⚠️ Database timeout');
-        resolve();
-      }
-    };
-    check();
-  });
-}
-
-async function loadAppDetail(appId) {
+async function loadAppDetail() {
   try {
-    if (!window.supabaseClient) {
-      showError('Database not connected');
+    const { data: app, error } = await supabaseClient
+      .from("apps").select("*").eq("id", CURRENT_APP_ID).single();
+
+    if (error || !app) {
+      document.getElementById("detail-wrap").innerHTML =
+        `<div class="empty-state">This app could not be found.${error ? `<br><span style="font-size:11px;opacity:0.6">${escapeHTML(error.message)}</span>` : ""}</div>`;
       return;
     }
 
-    console.log('📥 Fetching app from database...');
+    CURRENT_APP = app; // Store for translation
 
-    const { data: app, error } = await window.supabaseClient
-      .from('apps')
-      .select('*')
-      .eq('id', appId)
-      .single();
+    document.getElementById("page-title").textContent = app.name + " — MRZN Apps & Games";
 
-    if (error) {
-      console.error('Query error:', error);
-      showError('App not found');
-      return;
-    }
+    const { data: ratingRow, error: ratingErr } = await supabaseClient
+      .from("app_ratings").select("*").eq("app_id", CURRENT_APP_ID).maybeSingle();
+    if (ratingErr) console.error("rating error:", ratingErr);
 
-    if (!app) {
-      console.error('No app found');
-      showError('App not found');
-      return;
-    }
+    injectStructuredData(app, ratingRow);
 
-    console.log('✅ App loaded:', app.name);
-    currentApp = app;
+    const { data: reviews, error: reviewsErr } = await supabaseClient
+      .from("reviews_with_user").select("*").eq("app_id", CURRENT_APP_ID);
+    if (reviewsErr) console.error("reviews error:", reviewsErr);
 
-    // Render app
-    renderAppDetail(app);
+    renderDetail(app, ratingRow, reviews || []);
+    bindReviewForm(app);
+    trackRecentlyViewed(app);
 
-    // Add to recently viewed
-    addToRecentlyViewed(app);
+    // Apply language translation after rendering
+    await applyLanguageTranslation();
 
-  } catch (error) {
-    console.error('Load error:', error);
-    showError('Error loading app');
+  } catch (err) {
+    document.getElementById("detail-wrap").innerHTML =
+      `<div class="empty-state">Something went wrong: ${escapeHTML(err.message)}</div>`;
+    console.error(err);
   }
 }
 
-function renderAppDetail(app) {
-  try {
-    console.log('🎨 Rendering app detail...');
+function renderDetail(app, ratingRow, reviews) {
+  const avg = ratingRow?.avg_rating || 0;
+  const count = ratingRow?.review_count || 0;
+  const icon = app.icon_url || "assets/placeholder-icon.svg";
 
-    // Create container
-    let container = document.getElementById('app-detail-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'app-detail-container';
-      document.body.appendChild(container);
-    }
+  const myReview = CURRENT_SESSION ? reviews.find(r => r.user_id === CURRENT_SESSION.user.id) : null;
 
-    // Build HTML
-    container.innerHTML = `
-      <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
-        
-        <!-- Header -->
-        <div style="display: flex; gap: 20px; margin-bottom: 30px; align-items: start;">
-          <img src="${escapeHTML(app.icon_url || 'assets/placeholder-icon.svg')}" alt="${escapeHTML(app.name)}" style="
-            width: 80px;
-            height: 80px;
-            border-radius: 16px;
-            object-fit: cover;
-            background: var(--panel-2);
-          ">
-          
-          <div style="flex: 1;">
-            <h1 style="margin: 0 0 8px 0; font-size: 28px;">${escapeHTML(app.name || 'Unknown App')}</h1>
-            <div style="color: var(--text-dim); margin-bottom: 12px;">${escapeHTML(app.category || 'Category N/A')}</div>
-            
-            <div style="display: flex; gap: 16px; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 18px;">⭐</span>
-                <span style="font-weight: 700; font-size: 16px;">${(app.rating || 0).toFixed(1)}</span>
-                <span style="color: var(--text-dim); font-size: 13px;">(${app.review_count || 0} reviews)</span>
-              </div>
-              
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 16px;">📥</span>
-                <span style="color: var(--text-dim); font-size: 13px;">${formatDownloads(app.downloads)}</span>
-              </div>
-            </div>
-          </div>
-          
-          <button id="favorite-btn" onclick="toggleFavorite()" style="
-            background: rgba(0, 229, 255, 0.1);
-            border: 2px solid var(--cyan);
-            color: var(--cyan);
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 700;
-            transition: all 0.2s;
-          ">❤️ Save</button>
+  const breakdown = [5, 4, 3, 2, 1].map(star => {
+    const n = ratingRow ? (ratingRow["r" + star] || 0) : 0;
+    const pct = count ? Math.round((n / count) * 100) : 0;
+    return `<div class="rbar-row"><span>${star}★</span><div class="rbar-track"><div class="rbar-fill" style="width:${pct}%"></div></div><span>${n}</span></div>`;
+  }).join("");
+
+  const screenshots = (app.screenshots || []).length
+    ? `<div class="screenshot-row">${app.screenshots.map(s => `<img src="${escapeHTML(s)}" alt="screenshot">`).join("")}</div>`
+    : "";
+
+  document.getElementById("detail-wrap").innerHTML = `
+    <div class="detail-top">
+      <img class="detail-icon" src="${escapeHTML(icon)}" alt="${escapeHTML(app.name)}" onerror="this.style.opacity=0">
+      <div style="flex:1;min-width:220px">
+        <div class="detail-title">${escapeHTML(app.name)}</div>
+        <div class="detail-cat">${escapeHTML(app.category)}</div>
+        <div class="detail-rating">
+          <span class="avg">${avg || "—"}</span>
+          ${starsHTML(avg, 18)}
+          <span class="rating-count">(${count} reviews)</span>
         </div>
-
-        <!-- About Section -->
-        <div style="margin-bottom: 30px;">
-          <h2 style="margin-bottom: 12px;">About</h2>
-          <div style="
-            background: var(--panel-2);
-            padding: 16px;
-            border-radius: 8px;
-            line-height: 1.6;
-            color: var(--text-dim);
-          " id="app-description">${escapeHTML(app.description || 'No description available')}</div>
+        <div style="display:flex;gap:16px;margin-top:10px;font-family:var(--f-mono);font-size:12px;color:var(--text-faint)">
+          ${app.app_size ? `<span>📦 ${escapeHTML(app.app_size)}</span>` : ""}
+          ${app.downloads ? `<span>⬇ ${escapeHTML(app.downloads)} downloads</span>` : ""}
         </div>
-
-        <!-- Info Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px;">
-          
-          <div style="background: var(--panel-2); padding: 16px; border-radius: 8px;">
-            <div style="color: var(--text-dim); font-size: 13px; margin-bottom: 6px;">📦 Size</div>
-            <div style="font-weight: 700; font-size: 16px;">${escapeHTML(app.size || 'N/A')}</div>
-          </div>
-
-          <div style="background: var(--panel-2); padding: 16px; border-radius: 8px;">
-            <div style="color: var(--text-dim); font-size: 13px; margin-bottom: 6px;">📱 Requires</div>
-            <div style="font-weight: 700; font-size: 16px;">Android ${escapeHTML(app.min_android_version || '4.0+')}</div>
-          </div>
-
-          <div style="background: var(--panel-2); padding: 16px; border-radius: 8px;">
-            <div style="color: var(--text-dim); font-size: 13px; margin-bottom: 6px;">👨‍💻 Developer</div>
-            <div style="font-weight: 700; font-size: 16px;">${escapeHTML(app.developer || 'N/A')}</div>
-          </div>
-
-          <div style="background: var(--panel-2); padding: 16px; border-radius: 8px;">
-            <div style="color: var(--text-dim); font-size: 13px; margin-bottom: 6px;">📅 Updated</div>
-            <div style="font-weight: 700; font-size: 16px;">${formatDate(app.updated_at)}</div>
-          </div>
-
-        </div>
-
-        <!-- Download Section -->
-        <div id="download-section" style="margin-bottom: 30px;"></div>
-
       </div>
-    `;
+      ${app.download_url ? `<a href="${escapeHTML(app.download_url)}" target="_blank" rel="noopener" class="btn btn-primary">Download</a>` : ""}
+      <button class="btn btn-ghost" id="favorite-btn" data-app-id="${app.id}" data-app-name="${escapeHTML(app.name)}" data-app-icon="${escapeHTML(app.icon_url || '')}">${isFavorited(app.id) ? "❤️ Favorited" : "🤍 Favorite"}</button>
+    </div>
 
-    // Initialize favorite button
-    updateFavoriteButton();
+    ${screenshots}
 
-    // Render download section
-    if (window.renderDownloadSources) {
-      window.renderDownloadSources(app, document.getElementById('download-section'));
-    }
+    <div class="panel">
+      <div class="field-label" style="font-size:12px;margin-bottom:10px">About</div>
+      <p id="app-description" style="color:var(--text-dim);font-size:14.5px;line-height:1.8">${escapeHTML(app.description)}</p>
+      ${app.developer_note ? `<p id="developer-note" style="color:var(--cyan);font-size:13.5px;margin-top:14px"><strong>Developer note:</strong> <span id="dev-note-text">${escapeHTML(app.developer_note)}</span></p>` : ""}
+    </div>
 
-    console.log('✅ App rendered');
+    <div class="panel" style="margin-top:20px">
+      <div style="display:flex;gap:30px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div class="field-label" style="font-size:12px;margin-bottom:12px">Rating Breakdown</div>
+          ${count ? breakdown : `<div style="color:var(--text-faint);font-size:13px">No reviews yet.</div>`}
+        </div>
+        <div style="flex:1;min-width:260px" id="review-form-wrap"></div>
+      </div>
+    </div>
 
-  } catch (error) {
-    console.error('Render error:', error);
-  }
+    <div class="panel" style="margin-top:20px">
+      <div class="field-label" style="font-size:12px;margin-bottom:14px">All Reviews (${reviews.length})</div>
+      <div id="review-list">
+        ${reviews.length ? reviews.map(reviewItemHTML).join("") : `<div style="color:var(--text-faint);font-size:13.5px">Be the first to leave a review.</div>`}
+      </div>
+    </div>
+  `;
+
+  renderReviewForm(myReview);
+
+  document.getElementById("favorite-btn")?.addEventListener("click", (e) => {
+    const btn = e.currentTarget;
+    const isNowFav = toggleFavorite(btn.dataset.appId, btn.dataset.appName, btn.dataset.appIcon);
+    btn.textContent = isNowFav ? "❤️ Favorited" : "🤍 Favorite";
+    showToast(isNowFav ? "Added to favorites!" : "Removed from favorites.", "success");
+  });
 }
 
 // ============ LANGUAGE TRANSLATION ============
 
-async function applyLanguageToAppDetails() {
+async function applyLanguageTranslation() {
   try {
     if (!window.languageManager) {
       console.warn('Language manager not ready');
@@ -223,161 +146,237 @@ async function applyLanguageToAppDetails() {
     }
 
     const currentLang = window.languageManager.currentLang;
-    if (currentLang === 'en') return;
+    if (currentLang === 'en' || !CURRENT_APP) return;
 
-    console.log('🌐 Translating to:', currentLang);
+    console.log('🌐 Translating app details to:', currentLang);
 
     // Translate description
     const descElement = document.getElementById('app-description');
-    if (descElement && currentApp?.description) {
-      const translated = await window.languageManager.translateText(
-        currentApp.description,
-        currentLang
-      );
-      if (translated) {
-        descElement.textContent = translated;
+    if (descElement && CURRENT_APP.description) {
+      try {
+        const translated = await window.languageManager.translateText(
+          CURRENT_APP.description,
+          currentLang
+        );
+        if (translated && translated !== CURRENT_APP.description) {
+          descElement.textContent = translated;
+          console.log('✅ Description translated');
+        }
+      } catch (error) {
+        console.warn('Description translation error:', error);
       }
     }
 
-    console.log('✅ App translated');
+    // Translate developer note
+    const devNoteElement = document.getElementById('dev-note-text');
+    if (devNoteElement && CURRENT_APP.developer_note) {
+      try {
+        const translated = await window.languageManager.translateText(
+          CURRENT_APP.developer_note,
+          currentLang
+        );
+        if (translated && translated !== CURRENT_APP.developer_note) {
+          devNoteElement.textContent = translated;
+          console.log('✅ Developer note translated');
+        }
+      } catch (error) {
+        console.warn('Developer note translation error:', error);
+      }
+    }
+
+    console.log('✅ App details translated');
 
   } catch (error) {
     console.error('Translation error:', error);
   }
 }
 
-// ============ FAVORITES ============
+function isFavorited(appId) {
+  const favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+  return favs.some(f => f.id === appId);
+}
 
-function addToRecentlyViewed(app) {
-  try {
-    const recent = JSON.parse(localStorage.getItem('mrzn_recently_viewed') || '[]');
-    
-    // Remove if exists
-    const filtered = recent.filter(a => a.id !== app.id);
-    
-    // Add to front
-    filtered.unshift({
-      id: app.id,
-      name: app.name,
-      icon: app.icon_url
-    });
-
-    // Keep last 20
-    localStorage.setItem('mrzn_recently_viewed', JSON.stringify(filtered.slice(0, 20)));
-    
-    console.log('✅ Added to recently viewed');
-  } catch (error) {
-    console.error('Recently viewed error:', error);
+function toggleFavorite(appId, appName, appIcon) {
+  let favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
+  const exists = favs.some(f => f.id === appId);
+  if (exists) {
+    favs = favs.filter(f => f.id !== appId);
+  } else {
+    favs.unshift({ id: appId, name: appName, icon: appIcon });
   }
+  localStorage.setItem("mrzn_favorites", JSON.stringify(favs));
+  return !exists;
 }
 
-function toggleFavorite() {
+function trackRecentlyViewed(app) {
   try {
-    if (!currentApp) return;
+    let recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
+    recent = recent.filter(a => a.id !== app.id); // remove if already there
+    recent.unshift({ id: app.id, name: app.name, icon: app.icon_url });
+    recent = recent.slice(0, 20); // keep last 20
+    localStorage.setItem("mrzn_recently_viewed", JSON.stringify(recent));
+  } catch (e) { /* ignore storage errors */ }
+}
 
-    const favorites = JSON.parse(localStorage.getItem('mrzn_favorites') || '[]');
-    const index = favorites.findIndex(a => a.id === currentApp.id);
+function injectStructuredData(app, ratingRow) {
+  // remove any previous structured data (in case of re-render)
+  document.getElementById("structured-data")?.remove();
 
-    if (index > -1) {
-      // Remove
-      favorites.splice(index, 1);
-    } else {
-      // Add
-      favorites.push({
-        id: currentApp.id,
-        name: currentApp.name,
-        icon: currentApp.icon_url
-      });
-    }
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": app.name,
+    "description": app.description,
+    "applicationCategory": app.category,
+    "operatingSystem": "Android",
+  };
 
-    localStorage.setItem('mrzn_favorites', JSON.stringify(favorites));
-    updateFavoriteButton();
+  if (app.icon_url) data.image = app.icon_url;
+  if (app.download_url) data.url = app.download_url;
 
-    const message = index > -1 ? '❌ Removed from favorites' : '❤️ Added to favorites';
-    showToast?.(message, 'success');
-
-  } catch (error) {
-    console.error('Favorite error:', error);
+  if (ratingRow && ratingRow.review_count > 0) {
+    data.aggregateRating = {
+      "@type": "AggregateRating",
+      "ratingValue": ratingRow.avg_rating,
+      "reviewCount": ratingRow.review_count,
+      "bestRating": "5",
+      "worstRating": "1",
+    };
   }
+
+  const script = document.createElement("script");
+  script.id = "structured-data";
+  script.type = "application/ld+json";
+  script.textContent = JSON.stringify(data);
+  document.head.appendChild(script);
+
+  // Open Graph tags for rich social-media link previews
+  setMetaTag("og:title", app.name);
+  setMetaTag("og:description", app.description);
+  if (app.icon_url) setMetaTag("og:image", app.icon_url);
+  setMetaTag("og:type", "website");
 }
 
-function updateFavoriteButton() {
-  try {
-    if (!currentApp) return;
-
-    const btn = document.getElementById('favorite-btn');
-    if (!btn) return;
-
-    const favorites = JSON.parse(localStorage.getItem('mrzn_favorites') || '[]');
-    const isFavorite = favorites.some(a => a.id === currentApp.id);
-
-    if (isFavorite) {
-      btn.textContent = '❤️ Saved';
-      btn.style.background = 'var(--cyan)';
-      btn.style.color = 'var(--void)';
-    } else {
-      btn.textContent = '🤍 Save';
-      btn.style.background = 'rgba(0, 229, 255, 0.1)';
-      btn.style.color = 'var(--cyan)';
-    }
-  } catch (error) {
-    console.error('Update button error:', error);
+function setMetaTag(property, content) {
+  let tag = document.querySelector(`meta[property="${property}"]`);
+  if (!tag) {
+    tag = document.createElement("meta");
+    tag.setAttribute("property", property);
+    document.head.appendChild(tag);
   }
+  tag.setAttribute("content", content);
 }
 
-// ============ HELPERS ============
-
-function escapeHTML(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function formatDownloads(count) {
-  if (!count) return 'N/A';
-  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-  if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-  return count.toString();
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'N/A';
-  try {
-    return new Date(dateString).toLocaleDateString();
-  } catch (e) {
-    return 'N/A';
-  }
-}
-
-function showError(message) {
-  const container = document.getElementById('app-detail-container');
-  if (container) {
-    container.innerHTML = `
-      <div style="
-        max-width: 600px;
-        margin: 100px auto;
-        text-align: center;
-        padding: 40px;
-        background: rgba(220, 38, 38, 0.1);
-        border: 1px solid rgba(220, 38, 38, 0.3);
-        border-radius: 8px;
-      ">
-        <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
-        <div style="color: #fca5a5; font-size: 18px; font-weight: 700;">
-          ${message}
+function reviewItemHTML(r) {
+  return `
+  <div class="review-item">
+    <div class="review-head">
+      <div class="review-user">
+        <div class="avatar-sm">${initials(r.username)}</div>
+        <div>
+          <div class="review-name">${escapeHTML(r.username)}</div>
+          <div class="review-date">${timeAgo(r.created_at)}</div>
         </div>
-        <a href="index.html" style="
-          display: inline-block;
-          margin-top: 20px;
-          background: var(--cyan);
-          color: var(--void);
-          padding: 10px 20px;
-          border-radius: 6px;
-          text-decoration: none;
-          font-weight: 700;
-        ">← Back to Home</a>
       </div>
+      ${starsHTML(r.rating, 14)}
+    </div>
+    ${r.comment ? `<div class="review-comment">${escapeHTML(r.comment)}</div>` : ""}
+  </div>`;
+}
+
+function renderReviewForm(myReview) {
+  const wrap = document.getElementById("review-form-wrap");
+  if (!CURRENT_SESSION) {
+    wrap.innerHTML = `
+      <div class="field-label" style="font-size:12px;margin-bottom:12px">Leave a Review</div>
+      <div style="color:var(--text-faint);font-size:13.5px"><a href="login.html" style="color:var(--cyan);text-decoration:underline">Log in</a> to leave a review.</div>
     `;
+    return;
   }
+
+  SELECTED_RATING = myReview?.rating || 0;
+
+  wrap.innerHTML = `
+    <div class="field-label" style="font-size:12px;margin-bottom:12px">${myReview ? "Edit Your Review" : "Leave a Review"}</div>
+    <div class="star-input" id="star-input" style="margin-bottom:12px"></div>
+    <textarea class="field" id="review-comment" placeholder="Share your experience (optional)">${myReview ? escapeHTML(myReview.comment || "") : ""}</textarea>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-primary btn-sm" id="submit-review-btn">${myReview ? "Update" : "Submit"}</button>
+      ${myReview ? `<button class="btn btn-danger btn-sm" id="delete-review-btn">Delete</button>` : ""}
+    </div>
+  `;
+
+  buildStarInput();
+
+  document.getElementById("submit-review-btn").addEventListener("click", () => submitReview());
+  document.getElementById("delete-review-btn")?.addEventListener("click", () => deleteReview());
+}
+
+function buildStarInput() {
+  const el = document.getElementById("star-input");
+  el.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "★";
+    btn.className = i <= SELECTED_RATING ? "filled" : "";
+    btn.addEventListener("click", () => {
+      SELECTED_RATING = i;
+      buildStarInput();
+    });
+    el.appendChild(btn);
+  }
+}
+
+function bindReviewForm() {
+  // handled inline in renderReviewForm after each render
+}
+
+async function submitReview() {
+  if (!SELECTED_RATING) {
+    showToast("Please select a rating", "error");
+    return;
+  }
+  const comment = document.getElementById("review-comment").value.trim();
+  const btn = document.getElementById("submit-review-btn");
+  btn.disabled = true; btn.textContent = "Submitting...";
+
+  const modResult = moderateReview(comment);
+
+  const { error } = await supabaseClient.from("reviews").upsert({
+    app_id: CURRENT_APP_ID,
+    user_id: CURRENT_SESSION.user.id,
+    rating: SELECTED_RATING,
+    comment: comment || null,
+    is_flagged: modResult.flagged,
+    flag_reason: modResult.reason
+  }, { onConflict: "app_id,user_id" });
+
+  if (error) {
+    showToast("Could not submit review.", "error");
+    console.error(error);
+    btn.disabled = false; btn.textContent = "Submit";
+    return;
+  }
+
+  if (modResult.flagged) {
+    showToast("Review submitted — pending approval before it shows publicly.", "info");
+  } else {
+    showToast("Review submitted!", "success");
+  }
+  await loadAppDetail();
+}
+
+async function deleteReview() {
+  if (!confirm("Delete this review?")) return;
+  const { error } = await supabaseClient
+    .from("reviews").delete()
+    .eq("app_id", CURRENT_APP_ID).eq("user_id", CURRENT_SESSION.user.id);
+
+  if (error) {
+    showToast("Could not delete.", "error");
+    return;
+  }
+  showToast("Review deleted.", "success");
+  await loadAppDetail();
 }
