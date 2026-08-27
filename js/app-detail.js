@@ -3,7 +3,7 @@
 let CURRENT_APP_ID = null;
 let CURRENT_SESSION = null;
 let SELECTED_RATING = 0;
-let CURRENT_APP = null; // Store app data for translation
+let CURRENT_APP = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   refreshNavAuth();
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Listen for language changes
   window.addEventListener('languageChanged', () => {
-    applyLanguageTranslation();
+    translateAppContent();
   });
 });
 
@@ -35,8 +35,7 @@ async function loadAppDetail() {
       return;
     }
 
-    CURRENT_APP = app; // Store for translation
-
+    CURRENT_APP = app;
     document.getElementById("page-title").textContent = app.name + " — MRZN Apps & Games";
 
     const { data: ratingRow, error: ratingErr } = await supabaseClient
@@ -53,8 +52,8 @@ async function loadAppDetail() {
     bindReviewForm(app);
     trackRecentlyViewed(app);
 
-    // Apply language translation after rendering
-    await applyLanguageTranslation();
+    // ONLY translate About section
+    await translateAppContent();
 
   } catch (err) {
     document.getElementById("detail-wrap").innerHTML =
@@ -104,8 +103,8 @@ function renderDetail(app, ratingRow, reviews) {
 
     <div class="panel">
       <div class="field-label" style="font-size:12px;margin-bottom:10px">About</div>
-      <p id="app-description" style="color:var(--text-dim);font-size:14.5px;line-height:1.8">${escapeHTML(app.description)}</p>
-      ${app.developer_note ? `<p id="developer-note" style="color:var(--cyan);font-size:13.5px;margin-top:14px"><strong>Developer note:</strong> <span id="dev-note-text">${escapeHTML(app.developer_note)}</span></p>` : ""}
+      <p id="app-about-text" style="color:var(--text-dim);font-size:14.5px;line-height:1.8">${escapeHTML(app.description)}</p>
+      ${app.developer_note ? `<p style="color:var(--cyan);font-size:13.5px;margin-top:14px"><strong>Developer note:</strong> <span id="app-dev-note">${escapeHTML(app.developer_note)}</span></p>` : ""}
     </div>
 
     <div class="panel" style="margin-top:20px">
@@ -136,9 +135,9 @@ function renderDetail(app, ratingRow, reviews) {
   });
 }
 
-// ============ LANGUAGE TRANSLATION ============
+// ============ TRANSLATION - ONLY FOR ABOUT SECTION ============
 
-async function applyLanguageTranslation() {
+async function translateAppContent() {
   try {
     if (!window.languageManager) {
       console.warn('Language manager not ready');
@@ -148,18 +147,18 @@ async function applyLanguageTranslation() {
     const currentLang = window.languageManager.currentLang;
     if (currentLang === 'en' || !CURRENT_APP) return;
 
-    console.log('🌐 Translating app details to:', currentLang);
+    console.log('🌐 Translating About section to:', currentLang);
 
     // Translate description
-    const descElement = document.getElementById('app-description');
-    if (descElement && CURRENT_APP.description) {
+    const aboutElement = document.getElementById('app-about-text');
+    if (aboutElement && CURRENT_APP.description) {
       try {
         const translated = await window.languageManager.translateText(
           CURRENT_APP.description,
           currentLang
         );
         if (translated && translated !== CURRENT_APP.description) {
-          descElement.textContent = translated;
+          aboutElement.textContent = translated;
           console.log('✅ Description translated');
         }
       } catch (error) {
@@ -168,7 +167,7 @@ async function applyLanguageTranslation() {
     }
 
     // Translate developer note
-    const devNoteElement = document.getElementById('dev-note-text');
+    const devNoteElement = document.getElementById('app-dev-note');
     if (devNoteElement && CURRENT_APP.developer_note) {
       try {
         const translated = await window.languageManager.translateText(
@@ -184,13 +183,12 @@ async function applyLanguageTranslation() {
       }
     }
 
-    console.log('✅ App details translated');
-
   } catch (error) {
     console.error('Translation error:', error);
   }
 }
 
+// Rest of the functions remain the same...
 function isFavorited(appId) {
   const favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
   return favs.some(f => f.id === appId);
@@ -211,15 +209,14 @@ function toggleFavorite(appId, appName, appIcon) {
 function trackRecentlyViewed(app) {
   try {
     let recent = JSON.parse(localStorage.getItem("mrzn_recently_viewed") || "[]");
-    recent = recent.filter(a => a.id !== app.id); // remove if already there
+    recent = recent.filter(a => a.id !== app.id);
     recent.unshift({ id: app.id, name: app.name, icon: app.icon_url });
-    recent = recent.slice(0, 20); // keep last 20
+    recent = recent.slice(0, 20);
     localStorage.setItem("mrzn_recently_viewed", JSON.stringify(recent));
-  } catch (e) { /* ignore storage errors */ }
+  } catch (e) { /* ignore */ }
 }
 
 function injectStructuredData(app, ratingRow) {
-  // remove any previous structured data (in case of re-render)
   document.getElementById("structured-data")?.remove();
 
   const data = {
@@ -250,7 +247,6 @@ function injectStructuredData(app, ratingRow) {
   script.textContent = JSON.stringify(data);
   document.head.appendChild(script);
 
-  // Open Graph tags for rich social-media link previews
   setMetaTag("og:title", app.name);
   setMetaTag("og:description", app.description);
   if (app.icon_url) setMetaTag("og:image", app.icon_url);
@@ -379,4 +375,11 @@ async function deleteReview() {
   }
   showToast("Review deleted.", "success");
   await loadAppDetail();
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
