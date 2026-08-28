@@ -52,7 +52,7 @@ async function loadAppDetail() {
     bindReviewForm(app);
     trackRecentlyViewed(app);
 
-    // ONLY translate About section
+    // Translate after rendering
     await translateAppContent();
 
   } catch (err) {
@@ -153,16 +153,16 @@ async function translateAppContent() {
     const aboutElement = document.getElementById('app-about-text');
     if (aboutElement && CURRENT_APP.description) {
       try {
-        const translated = await window.languageManager.translateText(
-          CURRENT_APP.description,
-          currentLang
-        );
+        const translated = await translateLongText(CURRENT_APP.description, currentLang);
+        
         if (translated && translated !== CURRENT_APP.description) {
           aboutElement.textContent = translated;
           console.log('✅ Description translated');
         }
       } catch (error) {
         console.warn('Description translation error:', error);
+        // Keep original if translation fails
+        aboutElement.textContent = CURRENT_APP.description;
       }
     }
 
@@ -170,16 +170,16 @@ async function translateAppContent() {
     const devNoteElement = document.getElementById('app-dev-note');
     if (devNoteElement && CURRENT_APP.developer_note) {
       try {
-        const translated = await window.languageManager.translateText(
-          CURRENT_APP.developer_note,
-          currentLang
-        );
+        const translated = await translateLongText(CURRENT_APP.developer_note, currentLang);
+        
         if (translated && translated !== CURRENT_APP.developer_note) {
           devNoteElement.textContent = translated;
           console.log('✅ Developer note translated');
         }
       } catch (error) {
         console.warn('Developer note translation error:', error);
+        // Keep original if translation fails
+        devNoteElement.textContent = CURRENT_APP.developer_note;
       }
     }
 
@@ -188,7 +188,56 @@ async function translateAppContent() {
   }
 }
 
-// Rest of the functions remain the same...
+// Helper function to translate text longer than 500 chars
+async function translateLongText(text, targetLang) {
+  if (!text || text.length < 2) return text;
+
+  // If text is short enough, translate directly
+  if (text.length <= 450) {
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetLang}`
+      );
+      const data = await response.json();
+      return data.responseData?.translatedText || text;
+    } catch (error) {
+      console.warn('Translation API error:', error);
+      return text;
+    }
+  }
+
+  // If text is too long, split into sentences and translate each
+  console.log('📝 Text too long (' + text.length + ' chars), splitting into chunks...');
+  
+  const sentences = text.match(/[^\.!\?\n]+[\.!\?\n]+/g) || [text];
+  let translated = '';
+
+  for (let sentence of sentences) {
+    const trimmed = sentence.trim();
+    
+    if (trimmed.length < 2) {
+      translated += sentence;
+      continue;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=en|${targetLang}`
+      );
+      const data = await response.json();
+      const result = data.responseData?.translatedText || trimmed;
+      translated += result + ' ';
+    } catch (error) {
+      console.warn('Chunk translation error, keeping original');
+      translated += trimmed + ' ';
+    }
+  }
+
+  return translated.trim();
+}
+
+// ============ REST OF FUNCTIONS ============
+
 function isFavorited(appId) {
   const favs = JSON.parse(localStorage.getItem("mrzn_favorites") || "[]");
   return favs.some(f => f.id === appId);
