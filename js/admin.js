@@ -1,309 +1,309 @@
-/**
- * 🛠️ Admin Panel - Complete
- * App Management + Updates Management + App Requests
- */
+/* ===================== ADMIN PANEL LOGIC ===================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log('🛠️ Loading admin panel...');
-  
+let IS_EDITING = false;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const session = await requireAuth();
+  if (!session) return;
   refreshNavAuth();
-  checkAdminAccess();
-  
-  // Initialize all admin functions
-  loadAppsList();
+
+  const { data: profile } = await supabaseClient
+    .from("profiles").select("is_admin").eq("id", session.user.id).single();
+
+  const isAdmin = profile?.is_admin || ADMIN_EMAILS.includes(session.user.email);
+
+  if (!isAdmin) {
+    document.getElementById("admin-guard").innerHTML = `
+      <div class="empty-state">
+        <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>This page is for admins only.</div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById("admin-guard").style.display = "none";
+  document.getElementById("admin-content").style.display = "block";
+
+  loadAdminApps();
+  loadFlaggedReviews();
   loadAdminUpdates();
   loadAppRequests();
+
+  let adminSearchTimer;
+  document.getElementById("admin-search-input").addEventListener("input", (e) => {
+    clearTimeout(adminSearchTimer);
+    adminSearchTimer = setTimeout(() => {
+      loadAdminApps(e.target.value.trim());
+    }, 350);
+  });
+
+  document.getElementById("add-app-btn").addEventListener("click", () => openModal());
+  document.getElementById("close-modal").addEventListener("click", closeModal);
+  document.getElementById("app-modal").addEventListener("click", (e) => {
+    if (e.target.id === "app-modal") closeModal();
+  });
+  document.getElementById("app-form").addEventListener("submit", saveApp);
 });
 
-// ============ CHECK ADMIN ACCESS ============
+// ============ APPS SECTION ============
 
-async function checkAdminAccess() {
-  try {
-    if (!window.supabaseClient) {
-      console.warn('Database not ready');
-      return;
-    }
+async function loadAdminApps(searchQuery = "") {
+  let query = supabaseClient.from("apps").select("*").order("created_at", { ascending: false });
 
-    const { data: { session } } = await window.supabaseClient.auth.getSession();
-    
-    if (!session) {
-      window.location.href = 'login.html';
-      return;
-    }
-
-    const { data: profile } = await window.supabaseClient
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', session.user.id)
-      .single();
-
-    if (!profile?.is_admin) {
-      document.body.innerHTML = '<div style="padding: 40px; text-align: center; color: red;">❌ Admin access required</div>';
-      setTimeout(() => window.location.href = 'index.html', 2000);
-    }
-  } catch (error) {
-    console.error('Admin check error:', error);
+  if (searchQuery) {
+    const q = searchQuery.replace(/[%_]/g, "");
+    query = query.ilike("name", `%${q}%`);
+  } else {
+    query = query.limit(100);
   }
+
+  const { data: apps, error } = await query;
+
+  const { data: ratings } = await supabaseClient.from("app_ratings").select("*");
+  const ratingMap = {};
+  (ratings || []).forEach(r => ratingMap[r.app_id] = r);
+
+  const tbody = document.getElementById("admin-table-body");
+
+  if (error || !apps?.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:30px">${searchQuery ? "No apps match that search." : "No apps added yet."}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = apps.map(app => {
+    const r = ratingMap[app.id];
+    return `
+    <tr>
+      <td><img class="table-icon" src="${escapeHTML(app.icon_url || 'assets/placeholder-icon.svg')}" onerror="this.style.opacity=0"></td>
+      <td>${escapeHTML(app.name)}</td>
+      <td>${escapeHTML(app.category)}</td>
+      <td>${r ? `★ ${r.avg_rating} (${r.review_count})` : "—"}</td>
+      <td style="font-family:var(--f-mono);font-size:12px;color:var(--text-faint)">${new Date(app.created_at).toLocaleDateString("en-US")}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick='editApp(${JSON.stringify(app).replace(/'/g, "&apos;")})'>Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}')">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
 }
 
-// ============ APPS MANAGEMENT ============
+function openModal() {
+  IS_EDITING = false;
+  document.getElementById("modal-title").textContent = "Add New App";
+  document.getElementById("app-form").reset();
+  document.getElementById("app-id-field").value = "";
+  document.getElementById("app-modal").classList.add("show");
+}
 
-async function loadAppsList() {
-  try {
-    console.log('📱 Loading apps list...');
+function editApp(app) {
+  IS_EDITING = true;
+  document.getElementById("modal-title").textContent = "Edit App";
+  document.getElementById("app-id-field").value = app.id;
+  document.getElementById("f-name").value = app.name;
+  document.getElementById("f-category").value = app.category;
+  document.getElementById("f-description").value = app.description;
+  document.getElementById("f-icon").value = app.icon_url || "";
+  document.getElementById("f-size").value = app.app_size || "";
+  document.getElementById("f-downloads").value = app.downloads || "";
+  document.getElementById("f-screenshots").value = (app.screenshots || []).join(", ");
+  document.getElementById("f-download").value = app.download_url || "";
+  document.getElementById("f-note").value = app.developer_note || "";
+  document.getElementById("app-modal").classList.add("show");
+}
 
-    if (!window.supabaseClient) {
-      console.warn('Database not ready');
-      return;
-    }
+function closeModal() {
+  document.getElementById("app-modal").classList.remove("show");
+}
 
-    const { data: apps, error } = await window.supabaseClient
-      .from('apps')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+async function saveApp(e) {
+  e.preventDefault();
+  const btn = document.getElementById("save-app-btn");
+  btn.disabled = true; btn.textContent = "Saving...";
 
-    if (error) {
-      console.error('Load error:', error);
-      return;
-    }
+  const payload = {
+    name: document.getElementById("f-name").value.trim(),
+    category: document.getElementById("f-category").value.trim(),
+    description: document.getElementById("f-description").value.trim(),
+    icon_url: document.getElementById("f-icon").value.trim() || null,
+    app_size: document.getElementById("f-size").value.trim() || null,
+    downloads: document.getElementById("f-downloads").value.trim() || null,
+    screenshots: document.getElementById("f-screenshots").value
+      .split(",").map(s => s.trim()).filter(Boolean),
+    download_url: document.getElementById("f-download").value.trim() || null,
+    developer_note: document.getElementById("f-note").value.trim() || null
+  };
 
-    const container = document.querySelector('[id*="app"]') || 
-                     document.querySelector('table') ||
-                     document.body;
+  const appId = document.getElementById("app-id-field").value;
+  let error;
 
-    if (!container) {
-      console.warn('Container not found');
-      return;
-    }
+  if (appId) {
+    ({ error } = await supabaseClient.from("apps").update(payload).eq("id", appId));
+  } else {
+    ({ error } = await supabaseClient.from("apps").insert(payload));
+  }
 
-    // Create apps section if needed
-    let appsSection = document.getElementById('admin-apps-section');
-    if (!appsSection) {
-      appsSection = document.createElement('div');
-      appsSection.id = 'admin-apps-section';
-      appsSection.style.marginBottom = '40px';
-      container.insertBefore(appsSection, container.firstChild);
-    }
+  btn.disabled = false; btn.textContent = "Save";
 
-    if (!apps || apps.length === 0) {
-      appsSection.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No apps yet</div>';
-      return;
-    }
+  if (error) {
+    showToast("Could not save: " + error.message, "error");
+    console.error(error);
+    return;
+  }
 
-    // Build table
-    appsSection.innerHTML = `
-      <div style="margin-bottom: 20px;">
-        <h2 style="margin-bottom: 15px;">📱 All Apps (${apps.length})</h2>
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="border-bottom: 2px solid var(--line);">
-                <th style="padding: 12px; text-align: left; font-weight: 600;">App Name</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Category</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Rating</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Reviews</th>
-                <th style="padding: 12px; text-align: center; font-weight: 600;">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${apps.map(app => `
-                <tr style="border-bottom: 1px solid var(--line);">
-                  <td style="padding: 12px; font-weight: 600;">${escapeHTML(app.name || 'N/A')}</td>
-                  <td style="padding: 12px;">${escapeHTML(app.category || 'N/A')}</td>
-                  <td style="padding: 12px;">⭐ ${(app.rating || 0).toFixed(1)}</td>
-                  <td style="padding: 12px;">👥 ${app.review_count || 0}</td>
-                  <td style="padding: 12px; text-align: center;">
-                    <button onclick="editApp(${app.id})" style="
-                      background: var(--cyan);
-                      color: var(--void);
-                      border: none;
-                      padding: 6px 12px;
-                      border-radius: 4px;
-                      cursor: pointer;
-                      font-weight: 600;
-                      margin-right: 4px;
-                    ">Edit</button>
-                    <button onclick="deleteApp(${app.id})" style="
-                      background: rgba(220, 38, 38, 0.2);
-                      color: #fca5a5;
-                      border: 1px solid rgba(220, 38, 38, 0.4);
-                      padding: 6px 12px;
-                      border-radius: 4px;
-                      cursor: pointer;
-                      font-weight: 600;
-                    ">Delete</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+  showToast(appId ? "App updated!" : "App added!", "success");
+  closeModal();
+  loadAdminApps();
+}
+
+// ============ FLAGGED REVIEWS ============
+
+async function loadFlaggedReviews() {
+  const wrap = document.getElementById("flagged-reviews-wrap");
+
+  const { data: reviews, error } = await supabaseClient
+    .from("reviews")
+    .select("id, app_id, rating, comment, flag_reason, created_at, apps(name)")
+    .eq("is_flagged", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    wrap.innerHTML = `<div style="color:var(--danger);font-size:13.5px">Could not load flagged reviews: ${error.message}</div>`;
+    return;
+  }
+
+  if (!reviews || !reviews.length) {
+    wrap.innerHTML = `<div style="color:var(--text-faint);font-size:13.5px">No flagged reviews. All clear.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = reviews.map(r => `
+    <div class="review-item">
+      <div class="review-head">
+        <div>
+          <div class="review-name">${escapeHTML(r.apps?.name || "Unknown app")} — ${r.rating}★</div>
+          <div class="review-date">Flagged for: ${escapeHTML(r.flag_reason || "unknown")} · ${timeAgo(r.created_at)}</div>
         </div>
       </div>
-    `;
-
-    console.log('✅ Apps list loaded');
-
-  } catch (error) {
-    console.error('Apps list error:', error);
-  }
+      ${r.comment ? `<div class="review-comment">${escapeHTML(r.comment)}</div>` : "<div style='color:var(--text-faint);font-size:13px'>(no comment)</div>"}
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn btn-primary btn-sm" onclick="approveReview('${r.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectReview('${r.id}')">Delete</button>
+      </div>
+    </div>
+  `).join("");
 }
 
-async function editApp(id) {
-  console.log('Edit app:', id);
-  alert('Edit functionality coming soon');
+async function approveReview(id) {
+  const { error } = await supabaseClient.from("reviews").update({ is_flagged: false }).eq("id", id);
+  if (error) return showToast("Could not approve.", "error");
+  showToast("Review approved.", "success");
+  loadFlaggedReviews();
+}
+
+async function rejectReview(id) {
+  if (!confirm("Permanently delete this review?")) return;
+  const { error } = await supabaseClient.from("reviews").delete().eq("id", id);
+  if (error) return showToast("Could not delete.", "error");
+  showToast("Review deleted.", "success");
+  loadFlaggedReviews();
 }
 
 async function deleteApp(id) {
-  if (!confirm('Delete this app?')) return;
+  if (!confirm("Permanently delete this app? All its reviews will be deleted too.")) return;
 
-  try {
-    if (!window.supabaseClient) return;
-
-    const { error } = await window.supabaseClient
-      .from('apps')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    alert('✅ App deleted');
-    loadAppsList();
-  } catch (error) {
-    console.error('Delete error:', error);
-    alert('❌ Error: ' + error.message);
+  const { error } = await supabaseClient.from("apps").delete().eq("id", id);
+  if (error) {
+    showToast("Could not delete.", "error");
+    return;
   }
+  showToast("App deleted.", "success");
+  loadAdminApps();
 }
 
-// ============ UPDATES MANAGEMENT ============
+// ============ WEBSITE UPDATES ============
 
 async function loadAdminUpdates() {
   try {
     console.log('📰 Loading updates...');
 
-    if (!window.supabaseClient) {
-      console.warn('Database not ready');
-      return;
-    }
+    const wrap = document.getElementById("admin-updates-wrap");
+    if (!wrap) return;
 
-    // Create updates section
-    let updatesSection = document.getElementById('admin-updates-section');
-    if (!updatesSection) {
-      updatesSection = document.createElement('div');
-      updatesSection.id = 'admin-updates-section';
-      updatesSection.style.marginBottom = '40px';
-      document.body.appendChild(updatesSection);
-    }
-
-    updatesSection.innerHTML = `
+    wrap.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <h2 style="margin-bottom: 15px;">📰 Website Updates</h2>
-        
-        <button id="new-update-btn" style="
-          background: var(--cyan);
-          color: var(--void);
-          padding: 10px 20px;
-          border-radius: 6px;
-          border: none;
-          cursor: pointer;
-          font-weight: 700;
-          margin-bottom: 15px;
-        ">+ New Update</button>
+        <button id="new-update-btn" class="btn btn-primary btn-sm" style="margin-bottom: 15px;">+ New Update</button>
 
-        <!-- Update Form (Hidden by default) -->
-        <div id="update-form" style="display:none; background: var(--line); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-          <h3 style="margin-bottom: 15px; font-size: 16px;">📸 Post Update</h3>
-          
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">Title *</label>
-            <input type="text" id="update-title" placeholder="e.g., New Features Available 🎉" style="
+        <div id="update-form" style="display:none; background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Title *</label>
+            <input type="text" id="update-title" placeholder="Update title" style="
               width: 100%;
-              padding: 10px;
+              padding: 8px;
               border: 1px solid var(--line);
-              border-radius: 6px;
+              border-radius: 4px;
               background: var(--void);
               color: var(--text);
-              font-size: 14px;
+              font-size: 12px;
               box-sizing: border-box;
             ">
           </div>
           
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">Description *</label>
-            <textarea id="update-description" placeholder="What's new? What changed?" style="
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Description *</label>
+            <textarea id="update-description" placeholder="What's new?" style="
               width: 100%;
-              padding: 10px;
+              padding: 8px;
               border: 1px solid var(--line);
-              border-radius: 6px;
+              border-radius: 4px;
               background: var(--void);
               color: var(--text);
-              font-size: 14px;
+              font-size: 12px;
               box-sizing: border-box;
-              min-height: 100px;
+              min-height: 60px;
             "></textarea>
           </div>
 
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">Image URL</label>
-            <input type="url" id="update-image-url" placeholder="Paste image URL from Supabase Storage" style="
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image URL</label>
+            <input type="url" id="update-image-url" placeholder="https://..." style="
               width: 100%;
-              padding: 10px;
+              padding: 8px;
               border: 1px solid var(--line);
-              border-radius: 6px;
+              border-radius: 4px;
               background: var(--void);
               color: var(--text);
-              font-size: 14px;
+              font-size: 12px;
               box-sizing: border-box;
             ">
-            <small style="color: var(--text-faint); display: block; margin-top: 4px;">📁 Upload image to Supabase Storage first, then paste the URL</small>
           </div>
 
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px;">Version (Optional)</label>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Version</label>
             <input type="text" id="update-version" placeholder="v2.1.0" style="
               width: 100%;
-              padding: 10px;
+              padding: 8px;
               border: 1px solid var(--line);
-              border-radius: 6px;
+              border-radius: 4px;
               background: var(--void);
               color: var(--text);
-              font-size: 14px;
+              font-size: 12px;
               box-sizing: border-box;
             ">
           </div>
           
-          <div style="display: flex; gap: 10px;">
-            <button onclick="saveUpdate()" style="
-              background: var(--cyan);
-              color: var(--void);
-              padding: 10px 20px;
-              border-radius: 6px;
-              border: none;
-              cursor: pointer;
-              font-weight: 700;
-            ">Publish Update</button>
-            <button onclick="toggleUpdateForm()" style="
-              background: var(--line);
-              color: var(--text);
-              padding: 10px 20px;
-              border-radius: 6px;
-              border: 1px solid var(--line);
-              cursor: pointer;
-              font-weight: 700;
-            ">Cancel</button>
+          <div style="display: flex; gap: 8px;">
+            <button onclick="saveUpdate()" class="btn btn-primary btn-sm">Publish</button>
+            <button onclick="toggleUpdateForm()" class="btn btn-ghost btn-sm">Cancel</button>
           </div>
         </div>
 
-        <!-- Updates List -->
         <div id="updates-list"></div>
       </div>
     `;
 
-    // Add event listeners
     document.getElementById('new-update-btn').addEventListener('click', toggleUpdateForm);
 
-    // Load updates
-    const { data: updates, error } = await window.supabaseClient
+    const { data: updates, error } = await supabaseClient
       .from('website_updates')
       .select('*')
       .order('published_date', { ascending: false });
@@ -311,44 +311,31 @@ async function loadAdminUpdates() {
     if (error) throw error;
 
     const list = document.getElementById('updates-list');
-
     if (!updates || updates.length === 0) {
-      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No updates yet</div>';
+      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No updates</div>';
       return;
     }
 
-    list.innerHTML = updates.map(update => `
+    list.innerHTML = updates.map(u => `
       <div style="
-        background: rgba(0, 229, 255, 0.05);
+        background: var(--panel-2);
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 12px;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
       ">
         <div style="display: flex; justify-content: space-between; align-items: start;">
           <div style="flex: 1;">
-            <div style="font-weight: 700; color: var(--cyan); margin-bottom: 4px;">${escapeHTML(update.title)}</div>
-            <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 8px;">${update.description?.substring(0, 80)}</div>
-            <div style="font-size: 11px; color: var(--text-faint);">
-              📅 ${new Date(update.published_date).toLocaleDateString()}
-              ${update.version ? ' • v' + update.version : ''}
-            </div>
+            <div style="font-weight: 700; color: var(--cyan); margin-bottom: 4px; font-size: 13px;">${escapeHTML(u.title)}</div>
+            <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">${u.description?.substring(0, 60)}</div>
+            <div style="font-size: 11px; color: var(--text-faint);">📅 ${new Date(u.published_date).toLocaleDateString()} ${u.version ? '• v' + u.version : ''}</div>
           </div>
-          <button onclick="deleteUpdate(${update.id})" style="
-            background: rgba(220, 38, 38, 0.2);
-            color: #fca5a5;
-            border: 1px solid rgba(220, 38, 38, 0.4);
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-          ">Delete</button>
+          <button onclick="deleteUpdate(${u.id})" class="btn btn-danger btn-sm">Delete</button>
         </div>
       </div>
     `).join('');
 
-    console.log('✅ Updates loaded');
+    console.log('✅ Updates loaded:', updates.length);
 
   } catch (error) {
     console.error('Updates error:', error);
@@ -358,9 +345,6 @@ async function loadAdminUpdates() {
 function toggleUpdateForm() {
   const form = document.getElementById('update-form');
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  if (form.style.display === 'block') {
-    document.getElementById('update-title').focus();
-  }
 }
 
 async function saveUpdate() {
@@ -370,17 +354,12 @@ async function saveUpdate() {
   const version = document.getElementById('update-version').value.trim();
   
   if (!title || !description) {
-    alert('❌ Title and description are required');
+    showToast('❌ Title and description required', 'error');
     return;
   }
   
   try {
-    if (!window.supabaseClient) {
-      alert('❌ Database not connected');
-      return;
-    }
-
-    const { error } = await window.supabaseClient
+    const { error } = await supabaseClient
       .from('website_updates')
       .insert({
         title,
@@ -393,40 +372,33 @@ async function saveUpdate() {
     
     if (error) throw error;
     
-    alert('✅ Update published!');
-    
-    // Clear form
+    showToast('✅ Published', 'success');
     document.getElementById('update-title').value = '';
     document.getElementById('update-description').value = '';
     document.getElementById('update-image-url').value = '';
     document.getElementById('update-version').value = '';
     document.getElementById('update-form').style.display = 'none';
     
-    loadAdminUpdates();
+    await loadAdminUpdates();
   } catch (error) {
-    console.error('Error:', error);
-    alert('❌ Error: ' + error.message);
+    showToast('❌ Error: ' + error.message, 'error');
   }
 }
 
 async function deleteUpdate(id) {
-  if (!confirm('Delete this update?')) return;
+  if (!confirm('Delete?')) return;
   
   try {
-    if (!window.supabaseClient) return;
-
-    const { error } = await window.supabaseClient
+    const { error } = await supabaseClient
       .from('website_updates')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
-
-    alert('✅ Deleted');
-    loadAdminUpdates();
+    showToast('✅ Deleted', 'success');
+    await loadAdminUpdates();
   } catch (error) {
-    console.error('Error:', error);
-    alert('❌ Error: ' + error.message);
+    showToast('❌ Error: ' + error.message, 'error');
   }
 }
 
@@ -436,144 +408,119 @@ async function loadAppRequests() {
   try {
     console.log('📝 Loading app requests...');
 
-    if (!window.supabaseClient) {
-      console.warn('Database not ready');
-      return;
-    }
+    const wrap = document.getElementById("admin-requests-wrap");
+    if (!wrap) return;
 
-    // Create requests section
-    let requestsSection = document.getElementById('admin-requests-section');
-    if (!requestsSection) {
-      requestsSection = document.createElement('div');
-      requestsSection.id = 'admin-requests-section';
-      document.body.appendChild(requestsSection);
-    }
-
-    const { data: requests, error } = await window.supabaseClient
+    const { data: requests, error } = await supabaseClient
       .from('app_requests')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
     if (!requests || requests.length === 0) {
-      requestsSection.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 40px 20px;">No app requests yet</div>';
+      wrap.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No app requests</div>';
       return;
     }
 
-    requestsSection.innerHTML = `
-      <div style="margin-top: 40px;">
-        <h2 style="margin-bottom: 15px;">📝 App Requests (${requests.length})</h2>
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="border-bottom: 2px solid var(--line);">
-                <th style="padding: 12px; text-align: left; font-weight: 600;">App Name</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Link</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Reason</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Date</th>
-                <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
-                <th style="padding: 12px; text-align: center; font-weight: 600;">Action</th>
+    wrap.innerHTML = `
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--line); background: var(--panel-2);">
+              <th style="padding: 10px; text-align: left;">App</th>
+              <th style="padding: 10px; text-align: left;">Reason</th>
+              <th style="padding: 10px; text-align: left;">Date</th>
+              <th style="padding: 10px; text-align: left;">Status</th>
+              <th style="padding: 10px; text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${requests.map(r => `
+              <tr style="border-bottom: 1px solid var(--line);">
+                <td style="padding: 10px; font-weight: 600;">${escapeHTML(r.app_name)}</td>
+                <td style="padding: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${r.reason?.substring(0, 30) || 'N/A'}</td>
+                <td style="padding: 10px;">${new Date(r.created_at).toLocaleDateString()}</td>
+                <td style="padding: 10px;">
+                  <select onchange="updateRequestStatus(${r.id}, this.value)" style="
+                    background: var(--void);
+                    color: var(--text);
+                    border: 1px solid var(--line);
+                    padding: 4px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                  ">
+                    <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="approved" ${r.status === 'approved' ? 'selected' : ''}>Approved</option>
+                    <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                  </select>
+                </td>
+                <td style="padding: 10px; text-align: center;">
+                  <button onclick="viewRequest(${r.id})" class="btn btn-ghost btn-sm">View</button>
+                  <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm">Delete</button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${requests.map(req => `
-                <tr style="border-bottom: 1px solid var(--line);">
-                  <td style="padding: 12px; font-weight: 600;">${escapeHTML(req.app_name || 'N/A')}</td>
-                  <td style="padding: 12px;">
-                    <a href="${req.app_link}" target="_blank" rel="noopener" style="color: var(--cyan); text-decoration: none; word-break: break-all;">
-                      ${req.app_link?.substring(0, 40) || 'N/A'}...
-                    </a>
-                  </td>
-                  <td style="padding: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
-                    ${req.reason ? escapeHTML(req.reason.substring(0, 50)) : 'N/A'}
-                  </td>
-                  <td style="padding: 12px; font-size: 13px; color: var(--text-dim);">
-                    ${new Date(req.created_at).toLocaleDateString()}
-                  </td>
-                  <td style="padding: 12px;">
-                    <select onchange="updateRequestStatus(${req.id}, this.value)" style="
-                      background: var(--void);
-                      color: var(--text);
-                      border: 1px solid var(--line);
-                      padding: 6px;
-                      border-radius: 4px;
-                      cursor: pointer;
-                    ">
-                      <option value="pending" ${req.status === 'pending' ? 'selected' : ''}>📋 Pending</option>
-                      <option value="approved" ${req.status === 'approved' ? 'selected' : ''}>✅ Approved</option>
-                      <option value="rejected" ${req.status === 'rejected' ? 'selected' : ''}>❌ Rejected</option>
-                    </select>
-                  </td>
-                  <td style="padding: 12px; text-align: center;">
-                    <button onclick="deleteAppRequest(${req.id})" style="
-                      background: rgba(220, 38, 38, 0.2);
-                      color: #fca5a5;
-                      border: 1px solid rgba(220, 38, 38, 0.4);
-                      padding: 6px 12px;
-                      border-radius: 4px;
-                      cursor: pointer;
-                      font-size: 12px;
-                      font-weight: 600;
-                    ">Delete</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
 
-    console.log('✅ App requests loaded');
+    console.log('✅ Requests loaded:', requests.length);
 
   } catch (error) {
     console.error('Requests error:', error);
   }
 }
 
+async function viewRequest(id) {
+  try {
+    const { data: request, error } = await supabaseClient
+      .from('app_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    alert(`App: ${request.app_name}\n\nLink: ${request.app_link}\n\nReason:\n${request.reason || 'N/A'}`);
+
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+}
+
 async function updateRequestStatus(id, status) {
   try {
-    if (!window.supabaseClient) return;
-
-    const { error } = await window.supabaseClient
+    const { error } = await supabaseClient
       .from('app_requests')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) throw error;
-
-    console.log('✅ Status updated');
-    loadAppRequests();
+    showToast('✅ Updated', 'success');
+    await loadAppRequests();
   } catch (error) {
-    console.error('Error:', error);
-    alert('❌ Error: ' + error.message);
+    showToast('Error: ' + error.message, 'error');
   }
 }
 
-async function deleteAppRequest(id) {
-  if (!confirm('Delete this request?')) return;
+async function deleteRequest(id) {
+  if (!confirm('Delete?')) return;
 
   try {
-    if (!window.supabaseClient) return;
-
-    const { error } = await window.supabaseClient
+    const { error } = await supabaseClient
       .from('app_requests')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
-
-    alert('✅ Deleted');
-    loadAppRequests();
+    showToast('✅ Deleted', 'success');
+    await loadAppRequests();
   } catch (error) {
-    console.error('Error:', error);
-    alert('❌ Error: ' + error.message);
+    showToast('Error: ' + error.message, 'error');
   }
 }
-
-// ============ HELPER FUNCTIONS ============
 
 function escapeHTML(str) {
   if (!str) return '';
