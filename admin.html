@@ -49,7 +49,7 @@
     <!-- ✅ CSS -->
     <link rel="stylesheet" href="css/style.css">
     
-    <!-- ✅ CUSTOM STYLES (Admin Updates) -->
+    <!-- ✅ CUSTOM STYLES -->
     <style>
     .admin-form-group {
       margin-bottom: 16px;
@@ -83,47 +83,6 @@
       border-color: var(--cyan);
       box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
     }
-    .admin-update-item {
-      background: var(--void);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: all 0.2s;
-    }
-    .admin-update-item:hover {
-      border-color: var(--cyan);
-      background: rgba(8, 145, 178, 0.05);
-    }
-    .admin-update-info {
-      flex: 1;
-    }
-    .admin-update-title {
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .admin-update-meta {
-      font-size: 12px;
-      color: var(--text-faint);
-    }
-    .btn-delete {
-      background: #dc2626;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-    .btn-delete:hover {
-      background: #b91c1c;
-    }
     .admin-section {
       background: rgba(8, 145, 178, 0.05);
       border: 1px solid var(--line);
@@ -154,6 +113,45 @@
     .form-actions {
       display: flex;
       gap: 10px;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .gallery-item {
+      background: var(--void);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .gallery-item-actions {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      padding: 8px;
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    .gallery-item-actions button {
+      background: #dc2626;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
     }
     </style>
     
@@ -188,6 +186,7 @@
   </div>
 
   <div id="admin-content" style="display:none">
+    <!-- ✅ APP MANAGEMENT SECTION -->
     <div class="section-head">
       <div>
         <div class="eyebrow">ADMIN PANEL</div>
@@ -212,56 +211,52 @@
       </table>
     </div>
 
-    <!-- ✅ NEW UPDATES MANAGEMENT SECTION -->
+    <!-- ✅ IMAGE GALLERY SECTION -->
     <div class="section-head" style="margin-top:40px">
       <div>
         <div class="eyebrow">WEBSITE CONTENT</div>
-        <h2 class="section-title">Manage Updates</h2>
+        <h2 class="section-title">Image Gallery</h2>
       </div>
-      <button class="btn btn-primary" id="new-update-btn">+ New Update</button>
     </div>
 
-    <div class="admin-section" id="admin-updates-section">
-      <!-- Update Form (Hidden by default) -->
-      <div id="update-form" style="display:none; background: var(--line); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-        <h3 style="margin-bottom: 16px; font-size: 16px;">Create/Edit Update</h3>
+    <div class="admin-section" id="admin-gallery-wrap">
+      <button id="new-image-btn" class="btn btn-primary" style="margin-bottom: 15px;">📷 Upload Image</button>
+
+      <div id="image-form" style="display:none; background: var(--line); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <h3 style="margin-bottom: 16px; font-size: 16px;">📷 Post Image</h3>
         
         <div class="admin-form-group">
-          <label>Title *</label>
-          <input type="text" id="update-title" placeholder="e.g., AI Assistant Launch 🤖" required>
+          <label>Image URL *</label>
+          <input type="url" id="image-url-input" placeholder="https://mrzn-1st-apk.mdrafiuzzamanking99.workers.dev/image.jpg" required>
         </div>
         
         <div class="admin-form-group">
-          <label>Description *</label>
-          <textarea id="update-description" placeholder="Detailed description of the update..." required></textarea>
-        </div>
-        
-        <div class="admin-form-group">
-          <label>Features (comma-separated)</label>
-          <input type="text" id="update-features" placeholder="Feature 1, Feature 2, Feature 3">
-        </div>
-        
-        <div class="admin-form-group">
-          <label>Version (e.g., v2.1.0)</label>
-          <input type="text" id="update-version" placeholder="v2.1.0">
-        </div>
-        
-        <div class="admin-form-group">
-          <label>Image URL</label>
-          <input type="url" id="update-image-url" placeholder="https://... (Supabase Storage URL)">
-          <small style="color: var(--text-faint); display: block; margin-top: 4px;">Upload image to Supabase Storage first, then paste URL here</small>
+          <label>Image Title (Optional)</label>
+          <input type="text" id="image-title-input" placeholder="What's this image about?">
         </div>
         
         <div class="form-actions">
-          <button type="button" class="btn btn-primary" onclick="saveUpdate()">Save Update</button>
-          <button type="button" class="btn-secondary" onclick="toggleUpdateForm()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveImage()">Save Image</button>
+          <button type="button" class="btn-secondary" onclick="toggleImageForm()">Cancel</button>
         </div>
       </div>
-      
-      <!-- Updates List -->
-      <div id="updates-list"></div>
+
+      <div id="gallery-list"></div>
     </div>
 
+    <!-- ✅ APP REQUESTS SECTION -->
+    <div class="section-head" style="margin-top:40px">
+      <div>
+        <div class="eyebrow">USER SUBMISSIONS</div>
+        <h2 class="section-title">App Requests</h2>
+      </div>
+    </div>
+
+    <div class="panel" id="admin-requests-wrap" style="overflow-x: auto;">
+      <div style="color:var(--text-faint);font-size:13.5px;text-align:center;padding:20px">Loading requests...</div>
+    </div>
+
+    <!-- ✅ FLAGGED REVIEWS SECTION -->
     <div class="section-head" style="margin-top:40px">
       <div>
         <div class="eyebrow">MODERATION</div>
@@ -315,7 +310,7 @@
       </div>
       <div class="field-group">
         <label class="field-label">Download Link</label>
-        <input type="url" class="field" id="f-download" placeholder="https://github.com/.../app.apk">
+        <input type="url" class="field" id="f-download" placeholder="https://...">
       </div>
       <div class="field-group">
         <label class="field-label">Developer Note (optional)</label>
@@ -326,6 +321,7 @@
   </div>
 </div>
 
+<!-- ✅ SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
@@ -333,131 +329,9 @@
 <script src="js/app-request.js"></script>
 <script src="js/settings-apply.js"></script>
 <script src="js/sound.js"></script>
+
+<!-- ✅ ADMIN SCRIPT - UPDATED -->
 <script src="js/admin.js"></script>
 
-<!-- ✅ NEW AI & FEATURES -->
-<script src="js/ai-local-model.js"></script>
-<script src="js/ai-chat-ui.js"></script>
-<script src="js/download-sources.js"></script>
-
-<!-- ✅ UPDATES MANAGEMENT SCRIPT -->
-<script>
-// ============ UPDATES MANAGEMENT ============
-
-document.getElementById('new-update-btn').addEventListener('click', toggleUpdateForm);
-
-function toggleUpdateForm() {
-  const form = document.getElementById('update-form');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  if (form.style.display === 'block') {
-    document.getElementById('update-title').focus();
-  }
-}
-
-async function saveUpdate() {
-  const title = document.getElementById('update-title').value.trim();
-  const description = document.getElementById('update-description').value.trim();
-  const features = document.getElementById('update-features').value.trim();
-  const version = document.getElementById('update-version').value.trim();
-  const imageUrl = document.getElementById('update-image-url').value.trim();
-  
-  if (!title || !description) {
-    alert('❌ Title and description are required');
-    return;
-  }
-  
-  try {
-    const { error } = await window.supabaseClient
-      .from('website_updates')
-      .insert({
-        title,
-        description,
-        features: features || null,
-        version: version || null,
-        image_url: imageUrl || null,
-        status: 'published'
-      });
-    
-    if (error) throw error;
-    
-    alert('✅ Update published successfully!');
-    
-    // Clear form
-    document.getElementById('update-title').value = '';
-    document.getElementById('update-description').value = '';
-    document.getElementById('update-features').value = '';
-    document.getElementById('update-version').value = '';
-    document.getElementById('update-image-url').value = '';
-    document.getElementById('update-form').style.display = 'none';
-    
-    // Reload list
-    loadAdminUpdates();
-  } catch (error) {
-    console.error('Error saving update:', error);
-    alert('❌ Error saving update: ' + error.message);
-  }
-}
-
-async function loadAdminUpdates() {
-  try {
-    const { data: updates, error } = await window.supabaseClient
-      .from('website_updates')
-      .select('*')
-      .order('published_date', { ascending: false });
-    
-    if (error) throw error;
-    
-    const container = document.getElementById('updates-list');
-    
-    if (!updates || updates.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-faint); text-align: center; padding: 20px;">No updates yet. Create your first update!</p>';
-      return;
-    }
-    
-    container.innerHTML = updates.map(update => `
-      <div class="admin-update-item">
-        <div class="admin-update-info">
-          <div class="admin-update-title">${update.title}</div>
-          <div class="admin-update-meta">
-            ${update.version || 'v?'} • ${new Date(update.published_date).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            })}
-          </div>
-        </div>
-        <button type="button" class="btn-delete" onclick="deleteUpdate(${update.id})">Delete</button>
-      </div>
-    `).join('');
-  } catch (error) {
-    console.error('Error loading updates:', error);
-    document.getElementById('updates-list').innerHTML = '<p style="color: red;">Error loading updates</p>';
-  }
-}
-
-async function deleteUpdate(id) {
-  if (!confirm('Are you sure you want to delete this update?')) return;
-  
-  try {
-    const { error } = await window.supabaseClient
-      .from('website_updates')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
-    
-    alert('✅ Update deleted');
-    loadAdminUpdates();
-  } catch (error) {
-    console.error('Error deleting update:', error);
-    alert('❌ Error deleting update: ' + error.message);
-  }
-}
-
-// Load updates when page loads
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(loadAdminUpdates, 500);
-});
-</script>
 </body>
 </html>
