@@ -1,5 +1,3 @@
-/* ===================== ADMIN PANEL LOGIC ===================== */
-
 let IS_EDITING = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -26,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   loadAdminApps();
   loadFlaggedReviews();
-  loadAdminUpdates();
+  loadImageGallery();
   loadAppRequests();
 
   let adminSearchTimer;
@@ -220,52 +218,23 @@ async function deleteApp(id) {
   loadAdminApps();
 }
 
-// ============ WEBSITE UPDATES ============
+// ============ IMAGE GALLERY - SIMPLE IMAGE POST ============
 
-async function loadAdminUpdates() {
+async function loadImageGallery() {
   try {
-    console.log('📰 Loading updates...');
+    console.log('📷 Loading image gallery...');
 
-    const wrap = document.getElementById("admin-updates-wrap");
+    const wrap = document.getElementById("admin-gallery-wrap");
     if (!wrap) return;
 
     wrap.innerHTML = `
       <div style="margin-bottom: 20px;">
-        <button id="new-update-btn" class="btn btn-primary btn-sm" style="margin-bottom: 15px;">+ New Update</button>
+        <button id="new-image-btn" class="btn btn-primary btn-sm" style="margin-bottom: 15px;">📷 Upload Image</button>
 
-        <div id="update-form" style="display:none; background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+        <div id="image-form" style="display:none; background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
           <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Title *</label>
-            <input type="text" id="update-title" placeholder="Update title" style="
-              width: 100%;
-              padding: 8px;
-              border: 1px solid var(--line);
-              border-radius: 4px;
-              background: var(--void);
-              color: var(--text);
-              font-size: 12px;
-              box-sizing: border-box;
-            ">
-          </div>
-          
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Description *</label>
-            <textarea id="update-description" placeholder="What's new?" style="
-              width: 100%;
-              padding: 8px;
-              border: 1px solid var(--line);
-              border-radius: 4px;
-              background: var(--void);
-              color: var(--text);
-              font-size: 12px;
-              box-sizing: border-box;
-              min-height: 60px;
-            "></textarea>
-          </div>
-
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image URL</label>
-            <input type="url" id="update-image-url" placeholder="https://..." style="
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image URL *</label>
+            <input type="url" id="image-url-input" placeholder="https://mrzn-1st-apk.mdrafiuzzamanking99.workers.dev/image.jpg" style="
               width: 100%;
               padding: 8px;
               border: 1px solid var(--line);
@@ -278,8 +247,8 @@ async function loadAdminUpdates() {
           </div>
 
           <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Version</label>
-            <input type="text" id="update-version" placeholder="v2.1.0" style="
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image Title</label>
+            <input type="text" id="image-title-input" placeholder="Optional title" style="
               width: 100%;
               padding: 8px;
               border: 1px solid var(--line);
@@ -292,117 +261,125 @@ async function loadAdminUpdates() {
           </div>
           
           <div style="display: flex; gap: 8px;">
-            <button onclick="saveUpdate()" class="btn btn-primary btn-sm">Publish</button>
-            <button onclick="toggleUpdateForm()" class="btn btn-ghost btn-sm">Cancel</button>
+            <button onclick="saveImage()" class="btn btn-primary btn-sm">Save</button>
+            <button onclick="toggleImageForm()" class="btn btn-ghost btn-sm">Cancel</button>
           </div>
         </div>
 
-        <div id="updates-list"></div>
+        <div id="gallery-list"></div>
       </div>
     `;
 
-    document.getElementById('new-update-btn').addEventListener('click', toggleUpdateForm);
+    document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
 
-    const { data: updates, error } = await supabaseClient
-      .from('website_updates')
+    // Load images
+    const { data: images, error } = await supabaseClient
+      .from('admin_images')
       .select('*')
-      .order('published_date', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    if (error) throw error;
-
-    const list = document.getElementById('updates-list');
-    if (!updates || updates.length === 0) {
-      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No updates</div>';
+    if (error) {
+      console.error('Load images error:', error);
+      document.getElementById('gallery-list').innerHTML = `<div style="color: red; font-size: 12px;">Error loading images: ${error.message}</div>`;
       return;
     }
 
-    list.innerHTML = updates.map(u => `
+    const list = document.getElementById('gallery-list');
+    if (!images || images.length === 0) {
+      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No images yet</div>';
+      return;
+    }
+
+    list.innerHTML = images.map(img => `
       <div style="
         background: var(--panel-2);
         border: 1px solid var(--line);
         border-radius: 6px;
         padding: 12px;
         margin-bottom: 10px;
+        display: flex;
+        gap: 12px;
       ">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-          <div style="flex: 1;">
-            <div style="font-weight: 700; color: var(--cyan); margin-bottom: 4px; font-size: 13px;">${escapeHTML(u.title)}</div>
-            <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">${u.description?.substring(0, 60)}</div>
-            <div style="font-size: 11px; color: var(--text-faint);">📅 ${new Date(u.published_date).toLocaleDateString()} ${u.version ? '• v' + u.version : ''}</div>
-          </div>
-          <button onclick="deleteUpdate(${u.id})" class="btn btn-danger btn-sm">Delete</button>
+        <img src="${escapeHTML(img.image_url)}" alt="gallery" style="
+          width: 80px;
+          height: 80px;
+          object-fit: cover;
+          border-radius: 4px;
+          background: var(--void);
+        " onerror="this.style.display='none'">
+        
+        <div style="flex: 1;">
+          <div style="font-weight: 700; color: var(--cyan); margin-bottom: 4px; font-size: 13px;">${escapeHTML(img.title || 'Untitled')}</div>
+          <div style="font-size: 11px; color: var(--text-faint); margin-bottom: 8px; word-break: break-all;">${escapeHTML(img.image_url)}</div>
+          <div style="font-size: 10px; color: var(--text-faint);">📅 ${new Date(img.created_at).toLocaleDateString()}</div>
         </div>
+        
+        <button onclick="deleteImage(${img.id})" class="btn btn-danger btn-sm">Delete</button>
       </div>
     `).join('');
 
-    console.log('✅ Updates loaded:', updates.length);
+    console.log('✅ Images loaded:', images.length);
 
   } catch (error) {
-    console.error('Updates error:', error);
+    console.error('Gallery error:', error);
   }
 }
 
-function toggleUpdateForm() {
-  const form = document.getElementById('update-form');
+function toggleImageForm() {
+  const form = document.getElementById('image-form');
   form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-async function saveUpdate() {
-  const title = document.getElementById('update-title').value.trim();
-  const description = document.getElementById('update-description').value.trim();
-  const imageUrl = document.getElementById('update-image-url').value.trim();
-  const version = document.getElementById('update-version').value.trim();
+async function saveImage() {
+  const imageUrl = document.getElementById('image-url-input').value.trim();
+  const title = document.getElementById('image-title-input').value.trim();
   
-  if (!title || !description) {
-    showToast('❌ Title and description required', 'error');
+  if (!imageUrl) {
+    showToast('❌ Image URL required', 'error');
     return;
   }
   
   try {
     const { error } = await supabaseClient
-      .from('website_updates')
+      .from('admin_images')
       .insert({
-        title,
-        description,
-        image_url: imageUrl || null,
-        version: version || null,
-        status: 'published',
-        published_date: new Date().toISOString()
+        image_url: imageUrl,
+        title: title || null,
+        created_at: new Date().toISOString()
       });
     
     if (error) throw error;
     
-    showToast('✅ Published', 'success');
-    document.getElementById('update-title').value = '';
-    document.getElementById('update-description').value = '';
-    document.getElementById('update-image-url').value = '';
-    document.getElementById('update-version').value = '';
-    document.getElementById('update-form').style.display = 'none';
+    showToast('✅ Image saved', 'success');
+    document.getElementById('image-url-input').value = '';
+    document.getElementById('image-title-input').value = '';
+    document.getElementById('image-form').style.display = 'none';
     
-    await loadAdminUpdates();
+    await loadImageGallery();
   } catch (error) {
     showToast('❌ Error: ' + error.message, 'error');
   }
 }
 
-async function deleteUpdate(id) {
+async function deleteImage(id) {
   if (!confirm('Delete?')) return;
   
   try {
     const { error } = await supabaseClient
-      .from('website_updates')
+      .from('admin_images')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
     showToast('✅ Deleted', 'success');
-    await loadAdminUpdates();
+    await loadImageGallery();
   } catch (error) {
     showToast('❌ Error: ' + error.message, 'error');
   }
 }
 
-// ============ APP REQUESTS ============
+// ============ APP REQUESTS - SIMPLE ============
 
 async function loadAppRequests() {
   try {
@@ -411,15 +388,22 @@ async function loadAppRequests() {
     const wrap = document.getElementById("admin-requests-wrap");
     if (!wrap) return;
 
+    // First check if table exists by trying to count
     const { data: requests, error } = await supabaseClient
       .from('app_requests')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    console.log('App requests query:', { requests: requests?.length, error });
+
+    if (error) {
+      console.error('Load requests error:', error);
+      wrap.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
+      return;
+    }
 
     if (!requests || requests.length === 0) {
-      wrap.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No app requests</div>';
+      wrap.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px; background: var(--panel-2); border-radius: 6px;">No app requests yet</div>';
       return;
     }
 
@@ -427,8 +411,8 @@ async function loadAppRequests() {
       <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead>
-            <tr style="border-bottom: 1px solid var(--line); background: var(--panel-2);">
-              <th style="padding: 10px; text-align: left;">App</th>
+            <tr style="border-bottom: 2px solid var(--line); background: var(--panel-2);">
+              <th style="padding: 10px; text-align: left;">App Name</th>
               <th style="padding: 10px; text-align: left;">Reason</th>
               <th style="padding: 10px; text-align: left;">Date</th>
               <th style="padding: 10px; text-align: left;">Status</th>
@@ -439,7 +423,7 @@ async function loadAppRequests() {
             ${requests.map(r => `
               <tr style="border-bottom: 1px solid var(--line);">
                 <td style="padding: 10px; font-weight: 600;">${escapeHTML(r.app_name)}</td>
-                <td style="padding: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${r.reason?.substring(0, 30) || 'N/A'}</td>
+                <td style="padding: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">${escapeHTML(r.reason || 'N/A').substring(0, 40)}</td>
                 <td style="padding: 10px;">${new Date(r.created_at).toLocaleDateString()}</td>
                 <td style="padding: 10px;">
                   <select onchange="updateRequestStatus(${r.id}, this.value)" style="
@@ -456,7 +440,6 @@ async function loadAppRequests() {
                   </select>
                 </td>
                 <td style="padding: 10px; text-align: center;">
-                  <button onclick="viewRequest(${r.id})" class="btn btn-ghost btn-sm">View</button>
                   <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm">Delete</button>
                 </td>
               </tr>
@@ -466,27 +449,14 @@ async function loadAppRequests() {
       </div>
     `;
 
-    console.log('✅ Requests loaded:', requests.length);
+    console.log('✅ App requests loaded:', requests.length);
 
   } catch (error) {
     console.error('Requests error:', error);
-  }
-}
-
-async function viewRequest(id) {
-  try {
-    const { data: request, error } = await supabaseClient
-      .from('app_requests')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-
-    alert(`App: ${request.app_name}\n\nLink: ${request.app_link}\n\nReason:\n${request.reason || 'N/A'}`);
-
-  } catch (error) {
-    showToast('Error: ' + error.message, 'error');
+    const wrap = document.getElementById("admin-requests-wrap");
+    if (wrap) {
+      wrap.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
+    }
   }
 }
 
@@ -498,7 +468,6 @@ async function updateRequestStatus(id, status) {
       .eq('id', id);
 
     if (error) throw error;
-    showToast('✅ Updated', 'success');
     await loadAppRequests();
   } catch (error) {
     showToast('Error: ' + error.message, 'error');
@@ -506,7 +475,7 @@ async function updateRequestStatus(id, status) {
 }
 
 async function deleteRequest(id) {
-  if (!confirm('Delete?')) return;
+  if (!confirm('Delete this request?')) return;
 
   try {
     const { error } = await supabaseClient
