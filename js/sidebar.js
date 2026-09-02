@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", async () => {
   const navContainer = document.querySelector(".navbar .container");
   if (!navContainer) return;
@@ -163,6 +162,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function initLanguageSelector() {
     try {
+      console.log('🌍 Initializing language selector...');
+      
       if (!window.languageManager) {
         console.warn('Language manager not ready');
         return;
@@ -171,7 +172,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const languages = window.languageManager.getLanguages();
       const select = document.getElementById('sidebar-language-select');
 
-      if (!select) return;
+      if (!select) {
+        console.warn('Language select element not found');
+        return;
+      }
 
       // Build options
       let optionsHTML = '';
@@ -181,15 +185,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       select.innerHTML = optionsHTML;
+      console.log('✅ Language options populated');
 
       // Change language event
       select.addEventListener('change', async (e) => {
         const langCode = e.target.value;
-        console.log('🌍 Changing to:', langCode);
+        console.log('🌐 Changing language to:', langCode);
         
         try {
           await window.languageManager.changeLanguage(langCode);
-          showToast?.(`✅ Language changed to ${window.languageManager.getLanguageName(langCode)}`, 'success');
+          const langName = window.languageManager.getLanguageName(langCode);
+          showToast?.(`✅ Language changed to ${langName}`, 'success');
         } catch (error) {
           console.error('Language change error:', error);
           showToast?.('❌ Error changing language', 'error');
@@ -246,8 +252,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("sidebar-updates").addEventListener("click", async (e) => {
     e.preventDefault();
     closeSidebar();
-    updatesPanel.style.right = updatesPanel.style.right === "0px" ? "-400px" : "0px";
-    if (updatesPanel.style.right === "0px") {
+    const isOpen = updatesPanel.style.right === "0px";
+    updatesPanel.style.right = isOpen ? "-400px" : "0px";
+    if (!isOpen) {
       await loadUpdatesPanel();
     }
   });
@@ -258,89 +265,104 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Load updates
- async function loadUpdatesPanel() {
-  try {
-    if (!window.supabaseClient) {
-      document.getElementById("updates-list-container").innerHTML = '<div style="color: red;">Database not connected</div>';
-      return;
-    }
+  async function loadUpdatesPanel() {
+    try {
+      console.log('📥 Loading updates panel...');
 
-    console.log('📥 Fetching website updates...');
+      if (!window.supabaseClient) {
+        console.error('❌ Supabase client not available');
+        document.getElementById("updates-list-container").innerHTML = '<div style="color: red;">Database not connected</div>';
+        return;
+      }
 
-    const { data, error } = await window.supabaseClient
-      .from('website_updates')
-      .select('*')
-      .eq('status', 'published')
-      .order('published_date', { ascending: false });
+      const { data, error } = await window.supabaseClient
+        .from('website_updates')
+        .select('*')
+        .eq('status', 'published')
+        .order('published_date', { ascending: false });
 
-    console.log('Updates query:', { count: data?.length, error });
+      console.log('Updates query result:', { count: data?.length, error });
 
-    const container = document.getElementById('updates-list-container');
+      const container = document.getElementById('updates-list-container');
 
-    if (error || !data || data.length === 0) {
-      console.warn('No updates found or error:', error);
-      container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
-      return;
-    }
+      if (error) {
+        console.error('❌ Query error:', error);
+        container.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
+        return;
+      }
 
-    console.log('✅ Updates loaded:', data.length);
+      if (!data || data.length === 0) {
+        console.log('ℹ️ No updates found');
+        container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
+        return;
+      }
 
-    container.innerHTML = data.map(u => `
-      <div style="
-        background: rgba(0, 229, 255, 0.08);
-        border: 1px solid rgba(0, 229, 255, 0.2);
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 12px;
-      ">
-        ${u.image_url ? `
-          <img src="${u.image_url}" alt="Update" style="
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            border-radius: 6px;
-            margin-bottom: 10px;
-          " onerror="this.style.display='none'">
-        ` : ''}
-        
-        <div style="font-weight: 700; color: var(--cyan); font-size: 15px; margin-bottom: 6px;">
-          ${u.title || 'Update'}
-        </div>
-        
+      console.log('✅ Updates loaded:', data.length);
+
+      container.innerHTML = data.map(u => `
         <div style="
-          font-size: 13px;
-          color: var(--text-dim);
-          line-height: 1.4;
-          margin-bottom: 8px;
+          background: rgba(0, 229, 255, 0.08);
+          border: 1px solid rgba(0, 229, 255, 0.2);
+          border-radius: 10px;
+          padding: 14px;
+          margin-bottom: 12px;
         ">
-          ${u.description?.substring(0, 100) || 'N/A'}
-        </div>
-        
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 11px;
-          color: var(--text-faint);
-          border-top: 1px solid rgba(0, 229, 255, 0.1);
-          padding-top: 8px;
-        ">
-          <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
-          ${u.version ? `
-            <span style="
-              background: var(--cyan);
-              color: var(--void);
-              padding: 3px 8px;
-              border-radius: 3px;
-              font-weight: 700;
-            ">${u.version}</span>
+          ${u.image_url ? `
+            <img src="${u.image_url}" alt="Update" style="
+              width: 100%;
+              height: 160px;
+              object-fit: cover;
+              border-radius: 6px;
+              margin-bottom: 10px;
+            " onerror="this.style.display='none'">
           ` : ''}
+          
+          <div style="font-weight: 700; color: var(--cyan); font-size: 15px; margin-bottom: 6px;">
+            ${escapeHTML(u.title || 'Update')}
+          </div>
+          
+          <div style="
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.4;
+            margin-bottom: 8px;
+          ">
+            ${escapeHTML(u.description?.substring(0, 100) || 'N/A')}
+          </div>
+          
+          <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-faint);
+            border-top: 1px solid rgba(0, 229, 255, 0.1);
+            padding-top: 8px;
+          ">
+            <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
+            ${u.version ? `
+              <span style="
+                background: var(--cyan);
+                color: var(--void);
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-weight: 700;
+              ">${escapeHTML(u.version)}</span>
+            ` : ''}
+          </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
 
-  } catch (error) {
-    console.error('Updates error:', error);
-    document.getElementById('updates-list-container').innerHTML = '<div style="color: red;">Error loading updates</div>';
+    } catch (error) {
+      console.error('Updates error:', error);
+      document.getElementById('updates-list-container').innerHTML = '<div style="color: red;">Error loading updates</div>';
+    }
   }
+});
+
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
