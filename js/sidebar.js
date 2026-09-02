@@ -258,83 +258,89 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Load updates
-  async function loadUpdatesPanel() {
-    try {
-      if (!window.supabaseClient) {
-        document.getElementById("updates-list-container").innerHTML = '<div style="color: red;">Database not connected</div>';
-        return;
-      }
-
-      const { data, error } = await window.supabaseClient
-        .from('website_updates')
-        .select('*')
-        .eq('status', 'published')
-        .order('published_date', { ascending: false });
-
-      const container = document.getElementById('updates-list-container');
-
-      if (error || !data || data.length === 0) {
-        container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
-        return;
-      }
-
-      container.innerHTML = data.map(u => `
-        <div style="
-          background: rgba(0, 229, 255, 0.08);
-          border: 1px solid rgba(0, 229, 255, 0.2);
-          border-radius: 10px;
-          padding: 14px;
-          margin-bottom: 12px;
-        ">
-          ${u.image_url ? `
-            <img src="${u.image_url}" alt="Update" style="
-              width: 100%;
-              height: 160px;
-              object-fit: cover;
-              border-radius: 6px;
-              margin-bottom: 10px;
-            " onerror="this.style.display='none'">
-          ` : ''}
-          
-          <div style="font-weight: 700; color: var(--cyan); font-size: 15px; margin-bottom: 6px;">
-            ${u.title || 'Update'}
-          </div>
-          
-          <div style="
-            font-size: 13px;
-            color: var(--text-dim);
-            line-height: 1.4;
-            margin-bottom: 8px;
-          ">
-            ${u.description?.substring(0, 100) || 'N/A'}
-          </div>
-          
-          <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text-faint);
-            border-top: 1px solid rgba(0, 229, 255, 0.1);
-            padding-top: 8px;
-          ">
-            <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
-            ${u.version ? `
-              <span style="
-                background: var(--cyan);
-                color: var(--void);
-                padding: 3px 8px;
-                border-radius: 3px;
-                font-weight: 700;
-              ">${u.version}</span>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-
-    } catch (error) {
-      console.error('Updates error:', error);
-      document.getElementById('updates-list-container').innerHTML = '<div style="color: red;">Error loading updates</div>';
+ async function loadUpdatesPanel() {
+  try {
+    if (!window.supabaseClient) {
+      document.getElementById("updates-list-container").innerHTML = '<div style="color: red;">Database not connected</div>';
+      return;
     }
+
+    console.log('📥 Fetching website updates...');
+
+    const { data, error } = await window.supabaseClient
+      .from('website_updates')
+      .select('*')
+      .eq('status', 'published')
+      .order('published_date', { ascending: false });
+
+    console.log('Updates query:', { count: data?.length, error });
+
+    const container = document.getElementById('updates-list-container');
+
+    if (error || !data || data.length === 0) {
+      console.warn('No updates found or error:', error);
+      container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
+      return;
+    }
+
+    console.log('✅ Updates loaded:', data.length);
+
+    container.innerHTML = data.map(u => `
+      <div style="
+        background: rgba(0, 229, 255, 0.08);
+        border: 1px solid rgba(0, 229, 255, 0.2);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+      ">
+        ${u.image_url ? `
+          <img src="${u.image_url}" alt="Update" style="
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 10px;
+          " onerror="this.style.display='none'">
+        ` : ''}
+        
+        <div style="font-weight: 700; color: var(--cyan); font-size: 15px; margin-bottom: 6px;">
+          ${u.title || 'Update'}
+        </div>
+        
+        <div style="
+          font-size: 13px;
+          color: var(--text-dim);
+          line-height: 1.4;
+          margin-bottom: 8px;
+        ">
+          ${u.description?.substring(0, 100) || 'N/A'}
+        </div>
+        
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 11px;
+          color: var(--text-faint);
+          border-top: 1px solid rgba(0, 229, 255, 0.1);
+          padding-top: 8px;
+        ">
+          <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
+          ${u.version ? `
+            <span style="
+              background: var(--cyan);
+              color: var(--void);
+              padding: 3px 8px;
+              border-radius: 3px;
+              font-weight: 700;
+            ">${u.version}</span>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    console.error('Updates error:', error);
+    document.getElementById('updates-list-container').innerHTML = '<div style="color: red;">Error loading updates</div>';
   }
-});
+}
