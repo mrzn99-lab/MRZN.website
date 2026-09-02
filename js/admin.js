@@ -1,3 +1,5 @@
+/* ===================== ADMIN PANEL LOGIC ===================== */
+
 let IS_EDITING = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -41,6 +43,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.target.id === "app-modal") closeModal();
   });
   document.getElementById("app-form").addEventListener("submit", saveApp);
+
+  // Gallery events
+  document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
 });
 
 // ============ APPS SECTION ============
@@ -218,7 +223,7 @@ async function deleteApp(id) {
   loadAdminApps();
 }
 
-// ============ IMAGE GALLERY - SIMPLE IMAGE POST ============
+// ============ IMAGE GALLERY ============
 
 async function loadImageGallery() {
   try {
@@ -227,52 +232,6 @@ async function loadImageGallery() {
     const wrap = document.getElementById("admin-gallery-wrap");
     if (!wrap) return;
 
-    wrap.innerHTML = `
-      <div style="margin-bottom: 20px;">
-        <button id="new-image-btn" class="btn btn-primary btn-sm" style="margin-bottom: 15px;">📷 Upload Image</button>
-
-        <div id="image-form" style="display:none; background: var(--panel-2); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image URL *</label>
-            <input type="url" id="image-url-input" placeholder="https://mrzn-1st-apk.mdrafiuzzamanking99.workers.dev/image.jpg" style="
-              width: 100%;
-              padding: 8px;
-              border: 1px solid var(--line);
-              border-radius: 4px;
-              background: var(--void);
-              color: var(--text);
-              font-size: 12px;
-              box-sizing: border-box;
-            ">
-          </div>
-
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px;">Image Title</label>
-            <input type="text" id="image-title-input" placeholder="Optional title" style="
-              width: 100%;
-              padding: 8px;
-              border: 1px solid var(--line);
-              border-radius: 4px;
-              background: var(--void);
-              color: var(--text);
-              font-size: 12px;
-              box-sizing: border-box;
-            ">
-          </div>
-          
-          <div style="display: flex; gap: 8px;">
-            <button onclick="saveImage()" class="btn btn-primary btn-sm">Save</button>
-            <button onclick="toggleImageForm()" class="btn btn-ghost btn-sm">Cancel</button>
-          </div>
-        </div>
-
-        <div id="gallery-list"></div>
-      </div>
-    `;
-
-    document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
-
-    // Load images
     const { data: images, error } = await supabaseClient
       .from('admin_images')
       .select('*')
@@ -281,43 +240,29 @@ async function loadImageGallery() {
 
     if (error) {
       console.error('Load images error:', error);
-      document.getElementById('gallery-list').innerHTML = `<div style="color: red; font-size: 12px;">Error loading images: ${error.message}</div>`;
       return;
     }
 
     const list = document.getElementById('gallery-list');
+    if (!list) return;
+
     if (!images || images.length === 0) {
       list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No images yet</div>';
       return;
     }
 
-    list.innerHTML = images.map(img => `
-      <div style="
-        background: var(--panel-2);
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 10px;
-        display: flex;
-        gap: 12px;
-      ">
-        <img src="${escapeHTML(img.image_url)}" alt="gallery" style="
-          width: 80px;
-          height: 80px;
-          object-fit: cover;
-          border-radius: 4px;
-          background: var(--void);
-        " onerror="this.style.display='none'">
-        
-        <div style="flex: 1;">
-          <div style="font-weight: 700; color: var(--cyan); margin-bottom: 4px; font-size: 13px;">${escapeHTML(img.title || 'Untitled')}</div>
-          <div style="font-size: 11px; color: var(--text-faint); margin-bottom: 8px; word-break: break-all;">${escapeHTML(img.image_url)}</div>
-          <div style="font-size: 10px; color: var(--text-faint);">📅 ${new Date(img.created_at).toLocaleDateString()}</div>
-        </div>
-        
-        <button onclick="deleteImage(${img.id})" class="btn btn-danger btn-sm">Delete</button>
+    list.innerHTML = `
+      <div class="gallery-grid">
+        ${images.map(img => `
+          <div class="gallery-item">
+            <img src="${escapeHTML(img.image_url)}" alt="gallery" onerror="this.style.display='none'">
+            <div class="gallery-item-actions">
+              <button onclick="deleteImage(${img.id})">Delete</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
-    `).join('');
+    `;
 
     console.log('✅ Images loaded:', images.length);
 
@@ -363,7 +308,7 @@ async function saveImage() {
 }
 
 async function deleteImage(id) {
-  if (!confirm('Delete?')) return;
+  if (!confirm('Delete this image?')) return;
   
   try {
     const { error } = await supabaseClient
@@ -379,7 +324,7 @@ async function deleteImage(id) {
   }
 }
 
-// ============ APP REQUESTS - SIMPLE ============
+// ============ APP REQUESTS ============
 
 async function loadAppRequests() {
   try {
@@ -388,17 +333,16 @@ async function loadAppRequests() {
     const wrap = document.getElementById("admin-requests-wrap");
     if (!wrap) return;
 
-    // First check if table exists by trying to count
     const { data: requests, error } = await supabaseClient
       .from('app_requests')
-      .select('*', { count: 'exact' })
+      .select('*')
       .order('created_at', { ascending: false });
 
-    console.log('App requests query:', { requests: requests?.length, error });
+    console.log('Requests result:', { count: requests?.length, error });
 
     if (error) {
       console.error('Load requests error:', error);
-      wrap.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
+      wrap.innerHTML = `<div style="color: red; font-size: 12px; padding: 20px;">Error: ${error.message}</div>`;
       return;
     }
 
@@ -408,69 +352,79 @@ async function loadAppRequests() {
     }
 
     wrap.innerHTML = `
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-          <thead>
-            <tr style="border-bottom: 2px solid var(--line); background: var(--panel-2);">
-              <th style="padding: 10px; text-align: left;">App Name</th>
-              <th style="padding: 10px; text-align: left;">Reason</th>
-              <th style="padding: 10px; text-align: left;">Date</th>
-              <th style="padding: 10px; text-align: left;">Status</th>
-              <th style="padding: 10px; text-align: center;">Action</th>
+      <table class="admin-table" style="width: 100%; font-size: 13px;">
+        <thead>
+          <tr>
+            <th>App Name</th>
+            <th>Reason</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${requests.map(r => `
+            <tr>
+              <td style="font-weight: 600;">${escapeHTML(r.app_name)}</td>
+              <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">${escapeHTML((r.reason || 'N/A').substring(0, 50))}</td>
+              <td>${new Date(r.created_at).toLocaleDateString()}</td>
+              <td>
+                <select onchange="updateRequestStatus(${r.id}, this.value)" style="
+                  background: var(--void);
+                  color: var(--text);
+                  border: 1px solid var(--line);
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  font-size: 11px;
+                  cursor: pointer;
+                ">
+                  <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="approved" ${r.status === 'approved' ? 'selected' : ''}>Approved</option>
+                  <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                </select>
+              </td>
+              <td>
+                <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 11px;">Delete</button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            ${requests.map(r => `
-              <tr style="border-bottom: 1px solid var(--line);">
-                <td style="padding: 10px; font-weight: 600;">${escapeHTML(r.app_name)}</td>
-                <td style="padding: 10px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">${escapeHTML(r.reason || 'N/A').substring(0, 40)}</td>
-                <td style="padding: 10px;">${new Date(r.created_at).toLocaleDateString()}</td>
-                <td style="padding: 10px;">
-                  <select onchange="updateRequestStatus(${r.id}, this.value)" style="
-                    background: var(--void);
-                    color: var(--text);
-                    border: 1px solid var(--line);
-                    padding: 4px;
-                    border-radius: 4px;
-                    font-size: 11px;
-                  ">
-                    <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
-                    <option value="approved" ${r.status === 'approved' ? 'selected' : ''}>Approved</option>
-                    <option value="rejected" ${r.status === 'rejected' ? 'selected' : ''}>Rejected</option>
-                  </select>
-                </td>
-                <td style="padding: 10px; text-align: center;">
-                  <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm">Delete</button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
+          `).join('')}
+        </tbody>
+      </table>
     `;
 
     console.log('✅ App requests loaded:', requests.length);
 
   } catch (error) {
     console.error('Requests error:', error);
-    const wrap = document.getElementById("admin-requests-wrap");
-    if (wrap) {
-      wrap.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
-    }
   }
 }
 
 async function updateRequestStatus(id, status) {
   try {
-    const { error } = await supabaseClient
-      .from('app_requests')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id);
+    console.log('Updating request', id, 'to', status);
 
-    if (error) throw error;
+    const { data, error } = await supabaseClient
+      .from('app_requests')
+      .update({ 
+        status: status, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', id)
+      .select();
+
+    console.log('Update result:', { data, error });
+
+    if (error) {
+      console.error('Update error:', error);
+      showToast('❌ Error: ' + error.message, 'error');
+      return;
+    }
+
+    console.log('✅ Updated');
     await loadAppRequests();
   } catch (error) {
-    showToast('Error: ' + error.message, 'error');
+    console.error('Update catch error:', error);
+    showToast('❌ Error: ' + error.message, 'error');
   }
 }
 
@@ -478,18 +432,32 @@ async function deleteRequest(id) {
   if (!confirm('Delete this request?')) return;
 
   try {
-    const { error } = await supabaseClient
+    console.log('Deleting request', id);
+
+    const { data, error } = await supabaseClient
       .from('app_requests')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
-    if (error) throw error;
-    showToast('✅ Deleted', 'success');
+    console.log('Delete result:', { data, error });
+
+    if (error) {
+      console.error('Delete error:', error);
+      showToast('❌ Error: ' + error.message, 'error');
+      return;
+    }
+
+    console.log('✅ Deleted');
+    showToast('✅ Request deleted', 'success');
     await loadAppRequests();
   } catch (error) {
-    showToast('Error: ' + error.message, 'error');
+    console.error('Delete catch error:', error);
+    showToast('❌ Error: ' + error.message, 'error');
   }
 }
+
+// ============ HELPER ============
 
 function escapeHTML(str) {
   if (!str) return '';
