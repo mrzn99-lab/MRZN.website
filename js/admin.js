@@ -24,9 +24,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("admin-guard").style.display = "none";
   document.getElementById("admin-content").style.display = "block";
 
+  // Initialize all sections
   loadAdminApps();
   loadFlaggedReviews();
-  loadImageGallery();
+  initImageGallery();
   loadAppRequests();
 
   let adminSearchTimer;
@@ -43,9 +44,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (e.target.id === "app-modal") closeModal();
   });
   document.getElementById("app-form").addEventListener("submit", saveApp);
-
-  // Gallery events
-  document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
 });
 
 // ============ APPS SECTION ============
@@ -196,12 +194,174 @@ async function loadFlaggedReviews() {
   `).join("");
 }
 
-// ============ APP REQUESTS - FIXED ============
+async function approveReview(id) {
+  const { error } = await supabaseClient.from("reviews").update({ is_flagged: false }).eq("id", id);
+  if (error) return showToast("Could not approve.", "error");
+  showToast("Review approved.", "success");
+  loadFlaggedReviews();
+}
+
+async function rejectReview(id) {
+  if (!confirm("Permanently delete this review?")) return;
+  const { error } = await supabaseClient.from("reviews").delete().eq("id", id);
+  if (error) return showToast("Could not delete.", "error");
+  showToast("Review deleted.", "success");
+  loadFlaggedReviews();
+}
+
+async function deleteApp(id) {
+  if (!confirm("Permanently delete this app? All its reviews will be deleted too.")) return;
+
+  const { error } = await supabaseClient.from("apps").delete().eq("id", id);
+  if (error) {
+    showToast("Could not delete.", "error");
+    return;
+  }
+  showToast("App deleted.", "success");
+  loadAdminApps();
+}
+
+// ============ IMAGE GALLERY ============
+
+function initImageGallery() {
+  const wrap = document.getElementById("admin-gallery-wrap");
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <button id="new-image-btn" class="btn btn-primary" style="margin-bottom: 15px;">📷 Upload Image</button>
+
+    <div id="image-form" style="display:none; background: var(--line); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+      <h3 style="margin-bottom: 16px; font-size: 16px;">📷 Post Image</h3>
+      
+      <div class="admin-form-group">
+        <label>Image URL *</label>
+        <input type="url" id="image-url-input" placeholder="https://mrzn-1st-apk.mdrafiuzzamanking99.workers.dev/image.jpg" required>
+      </div>
+      
+      <div class="admin-form-group">
+        <label>Image Title (Optional)</label>
+        <input type="text" id="image-title-input" placeholder="What's this image about?">
+      </div>
+      
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" onclick="saveImage()">Save Image</button>
+        <button type="button" class="btn-secondary" onclick="toggleImageForm()">Cancel</button>
+      </div>
+    </div>
+
+    <div id="gallery-list"></div>
+  `;
+
+  document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
+  loadImageGallery();
+}
+
+async function loadImageGallery() {
+  try {
+    const { data: images, error } = await supabaseClient
+      .from('admin_images')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const list = document.getElementById('gallery-list');
+    if (!list) return;
+
+    if (!images || images.length === 0) {
+      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No images yet</div>';
+      return;
+    }
+
+    list.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 16px;">
+        ${images.map(img => `
+          <div style="
+            background: var(--void);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            height: 120px;
+          ">
+            <img src="${escapeHTML(img.image_url)}" alt="gallery" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+            <div style="
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              background: rgba(0,0,0,0.8);
+              padding: 6px;
+            ">
+              <button onclick="deleteImage(${img.id})" class="btn btn-danger btn-sm" style="padding: 3px 6px; font-size: 10px; width: 100%;">Delete</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+  } catch (error) {
+    console.error('Gallery error:', error);
+  }
+}
+
+function toggleImageForm() {
+  const form = document.getElementById('image-form');
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveImage() {
+  const imageUrl = document.getElementById('image-url-input').value.trim();
+  const title = document.getElementById('image-title-input').value.trim();
+  
+  if (!imageUrl) {
+    showToast('Image URL required', 'error');
+    return;
+  }
+  
+  try {
+    const { error } = await supabaseClient
+      .from('admin_images')
+      .insert({
+        image_url: imageUrl,
+        title: title || null
+      });
+    
+    if (error) throw error;
+    
+    showToast('Image saved', 'success');
+    document.getElementById('image-url-input').value = '';
+    document.getElementById('image-title-input').value = '';
+    document.getElementById('image-form').style.display = 'none';
+    
+    await loadImageGallery();
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+}
+
+async function deleteImage(id) {
+  if (!confirm('Delete this image?')) return;
+  
+  try {
+    const { error } = await supabaseClient
+      .from('admin_images')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    showToast('Image deleted', 'success');
+    await loadImageGallery();
+  } catch (error) {
+    showToast('Error: ' + error.message, 'error');
+  }
+}
+
+// ============ APP REQUESTS ============
 
 async function loadAppRequests() {
   try {
-    console.log('📝 Loading app requests...');
-
     const wrap = document.getElementById("admin-requests-wrap");
     if (!wrap) return;
 
@@ -210,13 +370,7 @@ async function loadAppRequests() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    console.log('Requests query:', { count: requests?.length, error });
-
-    if (error) {
-      console.error('❌ Load requests error:', error);
-      wrap.innerHTML = `<div style="color: red; font-size: 12px; padding: 20px;">Error loading: ${error.message}</div>`;
-      return;
-    }
+    if (error) throw error;
 
     if (!requests || requests.length === 0) {
       wrap.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 20px;">No app requests</div>';
@@ -224,7 +378,7 @@ async function loadAppRequests() {
     }
 
     wrap.innerHTML = `
-      <table class="admin-table" style="width: 100%; font-size: 13px;">
+      <table class="admin-table">
         <thead>
           <tr>
             <th>App Name</th>
@@ -256,7 +410,7 @@ async function loadAppRequests() {
                 </select>
               </td>
               <td>
-                <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 11px;">Delete</button>
+                <button onclick="deleteRequest(${r.id})" class="btn btn-danger btn-sm">Delete</button>
               </td>
             </tr>
           `).join('')}
@@ -264,36 +418,24 @@ async function loadAppRequests() {
       </table>
     `;
 
-    console.log('✅ Requests loaded:', requests.length);
-
   } catch (error) {
-    console.error('❌ Requests error:', error);
+    console.error('Requests error:', error);
   }
 }
 
 async function updateRequestStatus(id, status) {
   try {
-    console.log('🔄 Updating request', id, 'to', status);
-
     const { error } = await supabaseClient
       .from('app_requests')
-      .update({ 
-        status: status,
-        updated_at: new Date().toISOString()
-      })
+      .update({ status: status })
       .eq('id', id);
 
-    if (error) {
-      console.error('❌ Update error:', error);
-      showToast('❌ Error: ' + error.message, 'error');
-      return;
-    }
-
-    console.log('✅ Status updated');
-    showToast('✅ Status updated', 'success');
-    loadAppRequests();
+    if (error) throw error;
+    
+    showToast('Status updated', 'success');
+    await loadAppRequests();
   } catch (error) {
-    console.error('❌ Catch error:', error);
+    showToast('Error: ' + error.message, 'error');
   }
 }
 
@@ -301,204 +443,20 @@ async function deleteRequest(id) {
   if (!confirm('Delete this request?')) return;
 
   try {
-    console.log('🗑️ Deleting request ID:', id);
-
     const { error } = await supabaseClient
       .from('app_requests')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('❌ Delete error:', error);
-      showToast('❌ Error: ' + error.message, 'error');
-      return;
-    }
+    if (error) throw error;
 
-    console.log('✅ Request deleted');
-    showToast('✅ Request deleted', 'success');
-    
-    // Reload immediately
+    showToast('Request deleted', 'success');
     await loadAppRequests();
   } catch (error) {
-    console.error('❌ Catch error:', error);
-    showToast('❌ Error: ' + error.message, 'error');
+    showToast('Error: ' + error.message, 'error');
   }
 }
 
-// ============ IMAGE GALLERY - FIXED ============
-
-async function loadImageGallery() {
-  try {
-    console.log('📷 Loading image gallery...');
-
-    const wrap = document.getElementById("admin-gallery-wrap");
-    if (!wrap) return;
-
-    // Initialize form if not present
-    if (!document.getElementById('image-form')) {
-      wrap.innerHTML = `
-        <button id="new-image-btn" class="btn btn-primary" style="margin-bottom: 15px;">📷 Upload Image</button>
-
-        <div id="image-form" style="display:none; background: var(--line); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-          <h3 style="margin-bottom: 16px; font-size: 16px;">📷 Post Image</h3>
-          
-          <div class="admin-form-group">
-            <label>Image URL *</label>
-            <input type="url" id="image-url-input" placeholder="https://..." required>
-          </div>
-          
-          <div class="admin-form-group">
-            <label>Image Title (Optional)</label>
-            <input type="text" id="image-title-input" placeholder="What's this image about?">
-          </div>
-          
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary" onclick="saveImage()">Save Image</button>
-            <button type="button" class="btn-secondary" onclick="toggleImageForm()">Cancel</button>
-          </div>
-        </div>
-
-        <div id="gallery-list"></div>
-      `;
-
-      document.getElementById('new-image-btn').addEventListener('click', toggleImageForm);
-    }
-
-    // Load images
-    const { data: images, error } = await supabaseClient
-      .from('admin_images')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    console.log('Images query:', { count: images?.length, error });
-
-    if (error) {
-      console.error('❌ Load images error:', error);
-      document.getElementById('gallery-list').innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
-      return;
-    }
-
-    const list = document.getElementById('gallery-list');
-    if (!list) return;
-
-    if (!images || images.length === 0) {
-      list.innerHTML = '<div style="text-align: center; color: var(--text-faint); padding: 15px;">No images yet</div>';
-      return;
-    }
-
-    list.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 16px;">
-        ${images.map(img => `
-          <div style="
-            background: var(--void);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            height: 120px;
-          ">
-            <img src="${escapeHTML(img.image_url)}" alt="gallery" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
-            <div style="
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              background: rgba(0,0,0,0.7);
-              padding: 6px;
-              text-align: center;
-            ">
-              <button onclick="deleteImage(${img.id})" class="btn btn-danger btn-sm" style="padding: 3px 6px; font-size: 10px; width: 100%;">Delete</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    console.log('✅ Images loaded:', images.length);
-
-  } catch (error) {
-    console.error('❌ Gallery error:', error);
-  }
-}
-
-function toggleImageForm() {
-  const form = document.getElementById('image-form');
-  if (form) {
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  }
-}
-
-async function saveImage() {
-  const imageUrl = document.getElementById('image-url-input')?.value.trim();
-  const title = document.getElementById('image-title-input')?.value.trim();
-  
-  if (!imageUrl) {
-    showToast('❌ Image URL required', 'error');
-    return;
-  }
-  
-  try {
-    console.log('📤 Saving image:', imageUrl);
-
-    const { error } = await supabaseClient
-      .from('admin_images')
-      .insert({
-        image_url: imageUrl,
-        title: title || null,
-        created_at: new Date().toISOString()
-      });
-    
-    if (error) throw error;
-    
-    console.log('✅ Image saved');
-    showToast('✅ Image saved', 'success');
-    
-    // Clear form
-    document.getElementById('image-url-input').value = '';
-    document.getElementById('image-title-input').value = '';
-    document.getElementById('image-form').style.display = 'none';
-    
-    await loadImageGallery();
-  } catch (error) {
-    console.error('❌ Save error:', error);
-    showToast('❌ Error: ' + error.message, 'error');
-  }
-}
-
-async function deleteImage(id) {
-  if (!confirm('Delete this image?')) return;
-  
-  try {
-    console.log('🗑️ Deleting image ID:', id);
-
-    const { error } = await supabaseClient
-      .from('admin_images')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('❌ Delete error:', error);
-      showToast('❌ Error: ' + error.message, 'error');
-      return;
-    }
-
-    console.log('✅ Image deleted');
-    showToast('✅ Image deleted', 'success');
-    
-    // Reload immediately
-    await loadImageGallery();
-  } catch (error) {
-    console.error('❌ Catch error:', error);
-    showToast('❌ Error: ' + error.message, 'error');
-  }
-}
-
-function escapeHTML(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
 // ============ HELPER ============
 
 function escapeHTML(str) {
