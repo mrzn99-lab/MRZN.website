@@ -266,99 +266,115 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Load updates
   async function loadUpdatesPanel() {
-    try {
-      console.log('📥 Loading updates panel...');
+  try {
+    console.log('📥 Loading updates panel...');
 
-      if (!window.supabaseClient) {
-        console.error('❌ Supabase client not available');
-        document.getElementById("updates-list-container").innerHTML = '<div style="color: red;">Database not connected</div>';
-        return;
-      }
-
-      const { data, error } = await window.supabaseClient
-        .from('website_updates')
-        .select('*')
-        .eq('status', 'published')
-        .order('published_date', { ascending: false });
-
-      console.log('Updates query result:', { count: data?.length, error });
-
-      const container = document.getElementById('updates-list-container');
-
-      if (error) {
-        console.error('❌ Query error:', error);
-        container.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        console.log('ℹ️ No updates found');
-        container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
-        return;
-      }
-
-      console.log('✅ Updates loaded:', data.length);
-
-      container.innerHTML = data.map(u => `
-        <div style="
-          background: rgba(0, 229, 255, 0.08);
-          border: 1px solid rgba(0, 229, 255, 0.2);
-          border-radius: 10px;
-          padding: 14px;
-          margin-bottom: 12px;
-        ">
-          ${u.image_url ? `
-            <img src="${u.image_url}" alt="Update" style="
-              width: 100%;
-              height: 160px;
-              object-fit: cover;
-              border-radius: 6px;
-              margin-bottom: 10px;
-            " onerror="this.style.display='none'">
-          ` : ''}
-          
-          <div style="font-weight: 700; color: var(--cyan); font-size: 15px; margin-bottom: 6px;">
-            ${escapeHTML(u.title || 'Update')}
-          </div>
-          
-          <div style="
-            font-size: 13px;
-            color: var(--text-dim);
-            line-height: 1.4;
-            margin-bottom: 8px;
-          ">
-            ${escapeHTML(u.description?.substring(0, 100) || 'N/A')}
-          </div>
-          
-          <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text-faint);
-            border-top: 1px solid rgba(0, 229, 255, 0.1);
-            padding-top: 8px;
-          ">
-            <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
-            ${u.version ? `
-              <span style="
-                background: var(--cyan);
-                color: var(--void);
-                padding: 3px 8px;
-                border-radius: 3px;
-                font-weight: 700;
-              ">${escapeHTML(u.version)}</span>
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-
-    } catch (error) {
-      console.error('Updates error:', error);
-      document.getElementById('updates-list-container').innerHTML = '<div style="color: red;">Error loading updates</div>';
+    if (!window.supabaseClient) {
+      console.error('❌ Supabase client not available');
+      document.getElementById("updates-list-container").innerHTML = 
+        '<div style="color: red;">Database not connected</div>';
+      return;
     }
+
+    // ========== FETCH UPDATES FROM DATABASE ==========
+    const { data, error } = await window.supabaseClient
+      .from('website_updates')
+      .select('*')
+      .eq('status', 'published')
+      .order('published_date', { ascending: false });
+
+    console.log('Updates query result:', { count: data?.length, error });
+
+    const container = document.getElementById('updates-list-container');
+
+    // ========== ERROR HANDLING ==========
+    if (error) {
+      console.error('❌ Query error:', error);
+      container.innerHTML = `<div style="color: red; font-size: 12px;">Error: ${error.message}</div>`;
+      return;
+    }
+
+    // ========== NO DATA ==========
+    if (!data || data.length === 0) {
+      console.log('ℹ️ No updates found');
+      container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No updates yet</div>';
+      return;
+    }
+
+    console.log('✅ Updates loaded:', data.length);
+
+    // ========== RENDER UPDATES ==========
+    container.innerHTML = data.map(u => `
+      <div style="
+        background: rgba(0, 229, 255, 0.08);
+        border: 1px solid rgba(0, 229, 255, 0.2);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+      ">
+        <!-- IMAGE (if available) -->
+        ${u.image_url ? `
+          <img src="${u.image_url}" alt="Update" style="
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 10px;
+          " onerror="this.style.display='none'">
+        ` : ''}
+        
+        <!-- TITLE -->
+        <div style="
+          font-weight: 700; 
+          color: var(--cyan); 
+          font-size: 15px; 
+          margin-bottom: 6px;
+        ">
+          ${escapeHTML(u.title || 'Update')}
+        </div>
+        
+        <!-- DESCRIPTION -->
+        <div style="
+          font-size: 13px;
+          color: var(--text-dim);
+          line-height: 1.4;
+          margin-bottom: 8px;
+        ">
+          ${escapeHTML(u.description?.substring(0, 100) || 'N/A')}
+        </div>
+        
+        <!-- DATE & VERSION -->
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 11px;
+          color: var(--text-faint);
+          border-top: 1px solid rgba(0, 229, 255, 0.1);
+          padding-top: 8px;
+        ">
+          <span>📅 ${new Date(u.published_date).toLocaleDateString()}</span>
+          ${u.version ? `
+            <span style="
+              background: var(--cyan);
+              color: var(--void);
+              padding: 3px 8px;
+              border-radius: 3px;
+              font-weight: 700;
+            ">
+              ${escapeHTML(u.version)}
+            </span>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    console.error('Updates error:', error);
+    document.getElementById('updates-list-container').innerHTML = 
+      '<div style="color: red;">Error loading updates</div>';
   }
-});
+}
 
 function escapeHTML(str) {
   if (!str) return '';
