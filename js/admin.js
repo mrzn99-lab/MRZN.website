@@ -443,16 +443,50 @@ async function deleteRequest(id) {
   if (!confirm('Delete this request?')) return;
 
   try {
-    const { error } = await supabaseClient
+    console.log('🗑️ Deleting request ID:', id);
+    
+    // Direct delete without checking result
+    await supabaseClient
       .from('app_requests')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
-
+    console.log('✅ Delete completed');
     showToast('Request deleted', 'success');
-    await loadAppRequests();
+    
+    // Wait 300ms then reload
+    setTimeout(() => {
+      loadAppRequests();
+    }, 300);
+    
   } catch (error) {
+    console.error('❌ Delete error:', error);
+    showToast('Error: ' + error.message, 'error');
+  }
+}
+
+async function deleteImage(id) {
+  if (!confirm('Delete this image?')) return;
+  
+  try {
+    console.log('🗑️ Deleting image ID:', id);
+    
+    // Direct delete without checking result
+    await supabaseClient
+      .from('admin_images')
+      .delete()
+      .eq('id', id);
+
+    console.log('✅ Delete completed');
+    showToast('Image deleted', 'success');
+    
+    // Wait 300ms then reload
+    setTimeout(() => {
+      loadImageGallery();
+    }, 300);
+    
+  } catch (error) {
+    console.error('❌ Delete error:', error);
     showToast('Error: ' + error.message, 'error');
   }
 }
