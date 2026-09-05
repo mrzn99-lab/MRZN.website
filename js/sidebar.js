@@ -1,3 +1,4 @@
+// sidebar gor my website--
 document.addEventListener("DOMContentLoaded", async () => {
   const navContainer = document.querySelector(".navbar .container");
   if (!navContainer) return;
@@ -238,11 +239,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   updatesPanel.innerHTML = `
     <div style="padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-      <div style="font-weight: 700; font-size: 18px; color: var(--cyan);">📰 Updates</div>
+      <div style="font-weight: 700; font-size: 18px; color: var(--cyan);">📷 Gallery</div>
       <button id="updates-panel-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-dim);">✕</button>
     </div>
     <div id="updates-list-container" style="flex: 1; overflow-y: auto; padding: 20px;">
-      <div style="text-align: center; color: var(--text-dim);">⏳ Loading updates...</div>
+      <div style="text-align: center; color: var(--text-dim);">⏳ Loading...</div>
     </div>
   `;
 
@@ -266,66 +267,69 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ============ LOAD UPDATES FUNCTION ============
 
-async function loadUpdatesPanel() {
-  try {
-    console.log('📥 Loading gallery...');
+  async function loadUpdatesPanel() {
+    try {
+      console.log('📥 Loading gallery...');
 
-    if (!window.supabaseClient) {
-      document.getElementById("updates-list-container").innerHTML = 
-        '<div style="color: red;">Database not connected</div>';
-      return;
-    }
+      if (!window.supabaseClient) {
+        document.getElementById("updates-list-container").innerHTML = 
+          '<div style="color: red;">Database not connected</div>';
+        return;
+      }
 
-    // ============ FETCH IMAGES FROM admin_images TABLE ============
-    const { data: images, error } = await window.supabaseClient
-      .from('admin_images')
-      .select('*')
-      .order('created_at', { ascending: false });
+      // ============ FETCH IMAGES FROM admin_images TABLE ============
+      const { data: images, error } = await window.supabaseClient
+        .from('admin_images')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    console.log('Images query:', { count: images?.length, error });
+      console.log('Images query:', { count: images?.length, error });
 
-    const container = document.getElementById('updates-list-container');
+      const container = document.getElementById('updates-list-container');
 
-    if (error) {
+      if (error) {
+        console.error('Error:', error);
+        container.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+        return;
+      }
+
+      if (!images || images.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No images yet</div>';
+        return;
+      }
+
+      console.log('✅ Images loaded:', images.length);
+
+      // ============ SHOW ONLY IMAGES ============
+      container.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+          ${images.map(img => `
+            <div style="
+              background: var(--void);
+              border: 1px solid var(--line);
+              border-radius: 8px;
+              overflow: hidden;
+            ">
+              <img src="${escapeHTML(img.image_url)}" alt="gallery" style="
+                width: 100%;
+                height: 200px;
+                object-fit: cover;
+                display: block;
+              " onerror="this.style.display='none'">
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+    } catch (error) {
       console.error('Error:', error);
-      container.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
-      return;
+      document.getElementById('updates-list-container').innerHTML = 
+        '<div style="color: red;">Error loading</div>';
     }
-
-    if (!images || images.length === 0) {
-      container.innerHTML = '<div style="text-align: center; color: var(--text-dim); padding: 40px 20px;">No images yet</div>';
-      return;
-    }
-
-    console.log('✅ Images loaded:', images.length);
-
-    // ============ SHOW ONLY IMAGES ============
-    container.innerHTML = `
-      <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-        ${images.map(img => `
-          <div style="
-            background: var(--void);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            overflow: hidden;
-          ">
-            <img src="${escapeHTML(img.image_url)}" alt="gallery" style="
-              width: 100%;
-              height: 200px;
-              object-fit: cover;
-              display: block;
-            " onerror="this.style.display='none'">
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-  } catch (error) {
-    console.error('Error:', error);
-    document.getElementById('updates-list-container').innerHTML = 
-      '<div style="color: red;">Error loading</div>';
   }
-}
+
+}); // ← MAIN DOMContentLoaded CLOSING BRACKET
+
 // ============ HELPER FUNCTION ============
 
 function escapeHTML(str) {
