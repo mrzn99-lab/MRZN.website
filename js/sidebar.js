@@ -239,7 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   updatesPanel.innerHTML = `
     <div style="padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-      <div style="font-weight: 700; font-size: 18px; color: var(--cyan);">📷 Gallery</div>
+      <div style="font-weight: 700; font-size: 18px; color: var(--cyan);">🆕New Update</div>
       <button id="updates-panel-close" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-dim);">✕</button>
     </div>
     <div id="updates-list-container" style="flex: 1; overflow-y: auto; padding: 20px;">
