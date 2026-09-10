@@ -1,22 +1,59 @@
-// ============ MRZN AI CHAT UI ============
+// ============ MRZN AI CHAT UI WITH FLOATING BUTTON ============
 
 document.addEventListener('DOMContentLoaded', () => {
   const chatContainer = document.getElementById('ai-chat-container');
   if (!chatContainer) return;
 
+  // ============ FLOATING BUTTON ============
+  const floatingBtn = document.createElement('button');
+  floatingBtn.id = 'mrzn-floating-btn';
+  floatingBtn.innerHTML = '💬';
+  floatingBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cyan) 0%, #00e5ff 100%);
+    border: none;
+    color: var(--void);
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 998;
+    box-shadow: 0 4px 20px rgba(0, 229, 255, 0.4);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+
+  floatingBtn.addEventListener('mouseover', () => {
+    floatingBtn.style.transform = 'scale(1.1)';
+    floatingBtn.style.boxShadow = '0 6px 30px rgba(0, 229, 255, 0.6)';
+  });
+
+  floatingBtn.addEventListener('mouseout', () => {
+    floatingBtn.style.transform = 'scale(1)';
+    floatingBtn.style.boxShadow = '0 4px 20px rgba(0, 229, 255, 0.4)';
+  });
+
+  chatContainer.appendChild(floatingBtn);
+
+  // ============ CHAT BOX ============
   const chatBox = document.createElement('div');
   chatBox.id = 'mrzn-chat-box';
   chatBox.style.cssText = `
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    left: 20px;
     width: 320px;
     max-width: 90vw;
     height: 480px;
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 12px;
-    display: flex;
+    display: none;
     flex-direction: column;
     z-index: 999;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
@@ -33,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       flex-shrink: 0;
       background: rgba(0, 229, 255, 0.08);
     ">
-      <div style="font-weight: 700; font-size: 14px; color: var(--cyan);">💬 Support</div>
+      <div style="font-weight: 700; font-size: 14px; color: var(--cyan);">💬 MRZN Assistant</div>
       <button id="mrzn-close-btn" style="
         background: none;
         border: none;
@@ -62,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gap: 6px;
       flex-shrink: 0;
     ">
-      <input type="text" id="mrzn-input" placeholder="Ask about apps..." style="
+      <input type="text" id="mrzn-input" placeholder="অ্যাপ সম্পর্কে জিজ্ঞাসা করো..." style="
         flex: 1;
         padding: 8px;
         border: 1px solid var(--line);
@@ -81,31 +118,49 @@ document.addEventListener('DOMContentLoaded', () => {
         cursor: pointer;
         font-weight: 700;
         font-size: 12px;
-      ">Send</button>
+      ">পাঠাও</button>
     </div>
   `;
 
   chatContainer.appendChild(chatBox);
 
+  // ============ ELEMENTS ============
   const messagesDiv = document.getElementById('mrzn-messages');
   const inputEl = document.getElementById('mrzn-input');
   const sendBtn = document.getElementById('mrzn-send-btn');
   const closeBtn = document.getElementById('mrzn-close-btn');
 
-  // Greeting message
-  const greeting = document.createElement('div');
-  greeting.style.cssText = `
-    align-self: flex-start;
-    background: rgba(0,229,255,0.1);
-    border: 1px solid rgba(0,229,255,0.2);
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 12px;
-    color: var(--text-dim);
-  `;
-  greeting.textContent = 'Hi! Ask me about MRZN apps and games.';
-  messagesDiv.appendChild(greeting);
+  // ============ TOGGLE CHAT ============
+  floatingBtn.addEventListener('click', () => {
+    if (chatBox.style.display === 'none' || chatBox.style.display === '') {
+      chatBox.style.display = 'flex';
+      floatingBtn.style.display = 'none';
+      inputEl.focus();
+      
+      // Greeting on first open
+      if (messagesDiv.children.length === 0) {
+        const greeting = document.createElement('div');
+        greeting.style.cssText = `
+          align-self: flex-start;
+          background: rgba(0,229,255,0.1);
+          border: 1px solid rgba(0,229,255,0.2);
+          padding: 8px;
+          border-radius: 8px;
+          font-size: 12px;
+          color: var(--text-dim);
+        `;
+        greeting.textContent = 'হাই! MRZN এর অ্যাপ ও গেম সম্পর্কে প্রশ্ন করো।';
+        messagesDiv.appendChild(greeting);
+      }
+    }
+  });
 
+  closeBtn.addEventListener('click', () => {
+    chatBox.style.display = 'none';
+    floatingBtn.style.display = 'flex';
+  });
+
+  // ============ SEND MESSAGE ============
   async function sendMessage() {
     const text = inputEl.value.trim();
     if (!text || sendBtn.disabled) return;
@@ -146,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     messagesDiv.appendChild(aiMsg);
 
     sendBtn.disabled = false;
-    sendBtn.textContent = 'Send';
+    sendBtn.textContent = 'পাঠাও';
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
@@ -156,9 +211,5 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       sendMessage();
     }
-  });
-
-  closeBtn.addEventListener('click', () => {
-    chatBox.style.display = 'none';
   });
 });
