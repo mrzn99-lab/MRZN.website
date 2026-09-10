@@ -1,103 +1,111 @@
-// ============ Ai Free 
+
+// ============ MRZN AI CHAT UI ============
 
 document.addEventListener('DOMContentLoaded', () => {
   const chatContainer = document.getElementById('ai-chat-container');
   if (!chatContainer) return;
 
   const chatBox = document.createElement('div');
-  chatBox.id = 'kira-chat-box';
+  chatBox.id = 'mrzn-chat-box';
   chatBox.style.cssText = `
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 400px;
-    max-width: 95vw;
-    height: 650px;
-    background: linear-gradient(135deg, var(--panel) 0%, rgba(8,145,178,0.05) 100%);
+    width: 320px;
+    max-width: 90vw;
+    height: 480px;
+    background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    z-index: 1000;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.4), 0 0 40px rgba(0,229,255,0.1);
-    backdrop-filter: blur(10px);
+    z-index: 999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   `;
 
   chatBox.innerHTML = `
     <!-- Header -->
     <div style="
-      padding: 16px;
+      padding: 12px;
       border-bottom: 1px solid var(--line);
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
-      background: linear-gradient(135deg, rgba(0,229,255,0.1) 0%, transparent 100%);
+      background: rgba(0, 229, 255, 0.08);
     ">
-      <div>
-        <div style="font-weight: 700; font-size: 16px; color: var(--cyan);">🤖 Kira AI</div>
-        <div style="font-size: 11px; color: var(--text-faint); margin-top: 2px;">Advanced AI Assistant</div>
-      </div>
-      <button id="kira-close-btn" style="
+      <div style="font-weight: 700; font-size: 14px; color: var(--cyan);">💬 Support</div>
+      <button id="mrzn-close-btn" style="
         background: none;
         border: none;
-        font-size: 22px;
+        font-size: 18px;
         cursor: pointer;
         color: var(--text-dim);
-        transition: all 0.2s;
-      " onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+      ">✕</button>
     </div>
 
     <!-- Messages -->
-    <div id="kira-messages" style="
+    <div id="mrzn-messages" style="
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
+      font-size: 12px;
     "></div>
 
     <!-- Input -->
     <div style="
-      padding: 12px;
+      padding: 10px;
       border-top: 1px solid var(--line);
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-shrink: 0;
-      background: rgba(0,0,0,0.2);
     ">
-      <input type="text" id="kira-input" placeholder="Ask me anything..." style="
+      <input type="text" id="mrzn-input" placeholder="Ask about apps..." style="
         flex: 1;
-        padding: 10px 12px;
+        padding: 8px;
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: 6px;
         background: var(--void);
         color: var(--text);
-        font-size: 13px;
+        font-size: 12px;
         font-family: inherit;
-        transition: all 0.2s;
-      " onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--line)'">
-      <button id="kira-send-btn" style="
-        background: linear-gradient(135deg, var(--cyan) 0%, #00e5ff 100%);
+      ">
+      <button id="mrzn-send-btn" style="
+        background: var(--cyan);
         color: var(--void);
         border: none;
-        padding: 10px 16px;
-        border-radius: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
         cursor: pointer;
         font-weight: 700;
-        font-size: 13px;
-        transition: all 0.2s;
-      " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">Send</button>
+        font-size: 12px;
+      ">Send</button>
     </div>
   `;
 
   chatContainer.appendChild(chatBox);
 
-  const messagesDiv = document.getElementById('kira-messages');
-  const inputEl = document.getElementById('kira-input');
-  const sendBtn = document.getElementById('kira-send-btn');
-  const closeBtn = document.getElementById('kira-close-btn');
+  const messagesDiv = document.getElementById('mrzn-messages');
+  const inputEl = document.getElementById('mrzn-input');
+  const sendBtn = document.getElementById('mrzn-send-btn');
+  const closeBtn = document.getElementById('mrzn-close-btn');
+
+  // Greeting message
+  const greeting = document.createElement('div');
+  greeting.style.cssText = `
+    align-self: flex-start;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.2);
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+  `;
+  greeting.textContent = 'Hi! Ask me about MRZN apps and games.';
+  messagesDiv.appendChild(greeting);
 
   async function sendMessage() {
     const text = inputEl.value.trim();
@@ -107,15 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const userMsg = document.createElement('div');
     userMsg.style.cssText = `
       align-self: flex-end;
-      background: linear-gradient(135deg, var(--cyan) 0%, #00e5ff 100%);
+      background: var(--cyan);
       color: var(--void);
-      padding: 12px 14px;
-      border-radius: 12px;
-      max-width: 80%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      max-width: 85%;
       word-break: break-word;
-      font-size: 13px;
-      font-weight: 500;
-      animation: slideIn 0.3s ease;
+      font-size: 12px;
     `;
     userMsg.textContent = text;
     messagesDiv.appendChild(userMsg);
@@ -125,18 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.textContent = '...';
 
     // AI response
-    const response = await window.kiraAIBot.sendMessage(text);
+    const response = await window.mrzn_bot.sendMessage(text);
 
     const aiMsg = document.createElement('div');
     aiMsg.style.cssText = `
       align-self: flex-start;
       background: rgba(8,145,178,0.1);
-      border: 1px solid rgba(0,229,255,0.3);
-      padding: 12px;
-      border-radius: 12px;
+      border: 1px solid rgba(0,229,255,0.2);
+      padding: 8px;
+      border-radius: 8px;
       max-width: 85%;
-      font-size: 13px;
-      animation: slideIn 0.3s ease;
+      font-size: 12px;
     `;
     aiMsg.innerHTML = response;
     messagesDiv.appendChild(aiMsg);
@@ -157,34 +162,4 @@ document.addEventListener('DOMContentLoaded', () => {
   closeBtn.addEventListener('click', () => {
     chatBox.style.display = 'none';
   });
-
-  // Add animation
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    #kira-messages::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    #kira-messages::-webkit-scrollbar-track {
-      background: rgba(0,0,0,0.1);
-      border-radius: 3px;
-    }
-    
-    #kira-messages::-webkit-scrollbar-thumb {
-      background: var(--cyan);
-      border-radius: 3px;
-    }
-  `;
-  document.head.appendChild(style);
 });
