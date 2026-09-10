@@ -4,7 +4,7 @@ const KIRA_AI_CONFIG = {
   API_KEY: 'kira_866b5c11978f670cdb63c235dd6e2187',
   BASE_URL: 'https://kiraai.vn/api/v1',
   MODEL: 'kira-3.5-flash',
-  MAX_TOKENS: 300,
+  MAX_TOKENS: 500,
 };
 
 const SYSTEM_PROMPT_EN = `You are MRZN Apps & Games smart assistant.
