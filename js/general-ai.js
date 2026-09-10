@@ -1,61 +1,86 @@
-// ============ MRZN APPS & GAMES AI BOT ============
+// ============ MRZN APPS & GAMES AI BOT - ENHANCED ============
 
 const KIRA_AI_CONFIG = {
-  API_KEY: 'kira_866b5c11978f670cdb63c235dd6e2187', // fack Api key only for try
+  API_KEY: 'kira_866b5c11978f670cdb63c235dd6xxx',
   BASE_URL: 'https://kiraai.vn/api/v1',
   MODEL: 'kira-3.5-flash',
   MAX_TOKENS: 300,
 };
 
-const SYSTEM_PROMPT = `You are a helpful assistant for MRZN Apps & Games website. 
+const SYSTEM_PROMPT_EN = `You are MRZN Apps & Games smart assistant.
 You ONLY answer questions about:
-- Apps and games available on MRZN
-- App features, downloads, reviews
-- Game information and gameplay
-- App recommendations
+- MRZN apps and games
+- App features, downloads, reviews, ratings
+- Game information, gameplay, tips
+- App installation and troubleshooting
 - Technical support for our apps
-- YouTube channel link: https://youtube.com/@mrznapps_games?si=mLfcVGlp9Eaohu86 shere with everyone.
-If the user asks anything NOT related to apps or games, politely decline and redirect them to ask about MRZN apps and games.`;
+- App recommendations
+- https://youtube.com/@mrznapps_games?si=mBW_Ki_xe6fBRhiQ YouTube channel Shere with everyone 
+If not about apps/games, politely decline and redirect to app questions.
+Always be helpful and friendly.`;
 
 class MRZNAIBot {
   constructor() {
     this.messageHistory = [];
     this.isTyping = false;
+    this.messageCount = 0;
+  }
+
+  getSystemPrompt() {
+    const currentLang = window.languageManager?.currentLang || 'en';
+    return currentLang.includes('bn') || currentLang === 'bn' ? SYSTEM_PROMPT_BN : SYSTEM_PROMPT_EN;
   }
 
   formatResponse(text) {
     let html = text;
 
+    // Bold with glow
     html = html.replace(/\*\*(.*?)\*\*/g, 
-      '<strong style="font-weight: 700; color: var(--cyan);">$1</strong>');
+      '<strong style="font-weight: 800; color: var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,0.5);">$1</strong>');
     
+    // Italic
     html = html.replace(/\*(.*?)\*/g, 
-      '<em style="font-style: italic; color: var(--text-dim);">$1</em>');
+      '<em style="font-style: italic; color: var(--text-dim); font-weight: 500;">$1</em>');
     
+    // Code with border
     html = html.replace(/`(.*?)`/g, 
-      '<code style="background: rgba(0,229,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px; color: var(--cyan);">$1</code>');
+      '<code style="background: linear-gradient(135deg, rgba(0,229,255,0.15) 0%, rgba(0,229,255,0.05) 100%); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(0,229,255,0.3); font-family: monospace; font-size: 12px; color: var(--cyan); font-weight: 600;">$1</code>');
     
+    // Headers with gradient
     html = html.replace(/^### (.*?)$/gm, 
-      '<div style="font-size: 14px; font-weight: 700; color: var(--cyan); margin: 10px 0 6px 0;">$1</div>');
+      '<div style="font-size: 14px; font-weight: 800; background: linear-gradient(90deg, var(--cyan) 0%, rgba(0,229,255,0.6) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 12px 0 6px 0; border-left: 3px solid var(--cyan); padding-left: 10px;">$1</div>');
     
     html = html.replace(/^## (.*?)$/gm, 
-      '<div style="font-size: 15px; font-weight: 700; color: var(--text); margin: 12px 0 8px 0;">$1</div>');
+      '<div style="font-size: 15px; font-weight: 800; color: var(--cyan); margin: 14px 0 8px 0;">$1</div>');
 
+    html = html.replace(/^# (.*?)$/gm, 
+      '<div style="font-size: 17px; font-weight: 800; color: var(--cyan); margin: 16px 0 10px 0;">$1</div>');
+
+    // List items with icon
     html = html.replace(/^[\*\-] (.*?)$/gm, 
-      '<div style="margin-left: 16px; margin-bottom: 6px;"><span style="color: var(--cyan); font-weight: 700;">▸</span> $1</div>');
+      '<div style="margin-left: 20px; margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start;"><span style="color: var(--cyan); font-weight: 800; flex-shrink: 0; margin-top: 2px;">▸</span><span>$1</span></div>');
 
+    // Numbered list
     html = html.replace(/^(\d+)\. (.*?)$/gm, 
-      '<div style="margin-left: 16px; margin-bottom: 6px;"><span style="color: var(--cyan); font-weight: 700;">$1.</span> $2</div>');
+      '<div style="margin-left: 20px; margin-bottom: 8px; display: flex; gap: 8px;"><span style="color: var(--cyan); font-weight: 800; flex-shrink: 0; min-width: 20px; background: rgba(0,229,255,0.1); padding: 2px 6px; border-radius: 3px;">$1</span><span>$2</span></div>');
 
+    // Quotes with left border
     html = html.replace(/^> (.*?)$/gm, 
-      '<div style="border-left: 3px solid var(--cyan); padding-left: 10px; margin: 8px 0; color: var(--text-dim); font-size: 12px;">$1</div>');
+      '<div style="border-left: 4px solid var(--cyan); padding-left: 12px; margin: 12px 0; color: var(--text-dim); font-style: italic; background: rgba(0,229,255,0.05); padding: 12px; padding-left: 12px; border-radius: 6px;">$1</div>');
 
-    return `<div style="line-height: 1.6; color: var(--text); font-size: 12px;">${html}</div>`;
+    return `<div style="
+      line-height: 1.7;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--f-ui), sans-serif;
+      word-break: break-word;
+    ">${html}</div>`;
   }
 
   async sendMessage(userMessage) {
     if (this.isTyping) return;
     this.isTyping = true;
+    this.messageCount++;
 
     try {
       console.log('💬 Message:', userMessage);
@@ -76,7 +101,7 @@ class MRZNAIBot {
           messages: [
             {
               role: 'system',
-              content: SYSTEM_PROMPT
+              content: this.getSystemPrompt()
             },
             ...this.messageHistory
           ],
@@ -86,8 +111,7 @@ class MRZNAIBot {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || 'API Error');
+        throw new Error('API Error');
       }
 
       const data = await response.json();
@@ -102,7 +126,10 @@ class MRZNAIBot {
 
     } catch (error) {
       console.error('Error:', error);
-      return this.formatResponse('Sorry, I encountered an error. Please try again or ask about our apps and games.');
+      const msg = window.languageManager?.currentLang?.includes('bn') 
+        ? '⚠️ দুঃখিত, আবার চেষ্টা করুন। সংযোগ পরীক্ষা করুন।'
+        : '⚠️ Sorry, please try again. Check your connection.';
+      return this.formatResponse(msg);
     } finally {
       this.isTyping = false;
     }
@@ -110,6 +137,7 @@ class MRZNAIBot {
 
   clearHistory() {
     this.messageHistory = [];
+    this.messageCount = 0;
   }
 }
 
