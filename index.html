@@ -137,27 +137,6 @@
   <div>© ২০২৬ MRZN Apps & Games</div>
   <div>ডিজাইন ও ডেভেলপমেন্ট: <strong>Rafiuzzaman</strong></div>
 </footer>
-<!-- SITE HELPER WIDGET (full-screen) -->
-<div style="position:fixed;bottom:22px;right:22px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px">
-  <button id="helper-bot-toggle" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));color:var(--void);font-size:23px;box-shadow:0 4px 20px rgba(0,229,255,0.45)">💬</button>
-  <span style="font-family:var(--f-mono);font-size:10px;color:var(--text-faint);background:rgba(7,11,20,0.7);padding:2px 8px;border-radius:6px">Support Bot</span>
-</div>
-
-<div id="helper-bot-panel" style="
-  position:fixed; inset:0; z-index:300; display:none; flex-direction:column;
-  background-image:linear-gradient(rgba(7,11,20,0.88),rgba(7,11,20,0.92)), url('assets/assistant-bg.jpg');
-  background-size:cover; background-position:center;
-">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)">
-    <div style="font-family:var(--f-display);font-weight:700;font-size:18px;color:var(--cyan)">MRZN Assistant</div>
-    <button id="helper-bot-close" style="font-size:26px;color:var(--text-faint)">✕</button>
-  </div>
-  <div id="helper-bot-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;padding:20px;max-width:640px;width:100%;margin:0 auto"></div>
-
-  <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;max-width:640px;width:100%;margin:0 auto">
-    <input type="text" id="helper-bot-input" class="field" placeholder="Type a message... (English, বাংলা, Banglish)" style="flex:1">
-    <button id="helper-bot-send" class="btn btn-primary" style="padding:12px 20px">Send</button>
-  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
