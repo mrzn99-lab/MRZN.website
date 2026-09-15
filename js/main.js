@@ -176,4 +176,28 @@ function renderPagination() {
       window.scrollTo({ top: document.getElementById("apps").offsetTop - 80, behavior: "smooth" });
     }
   });
+
+  // ============ REMOVE DUPLICATE CHAT BUTTONS ============
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    // Find and remove all buttons except our left-side one
+    const allBtns = document.querySelectorAll('button');
+    
+    allBtns.forEach(btn => {
+      const style = btn.getAttribute('style') || '';
+      
+      // Remove if it's on the right side (right: with any value)
+      if (style.includes('right:')) {
+        btn.remove();
+        console.log('✅ Removed right-side button');
+      }
+      
+      // Remove if it has chat/ai related text
+      if (btn.textContent.includes('💬') && btn.id !== 'mrzn-floating-btn') {
+        btn.remove();
+        console.log('✅ Removed duplicate chat button');
+      }
+    });
+  }, 1000);
+});
 }
