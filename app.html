@@ -196,7 +196,7 @@
   position:fixed; inset:0; z-index:300; display:none; flex-direction:column;
   background-image:linear-gradient(rgba(7,11,20,0.88),rgba(7,11,20,0.92)), url('assets/assistant-bg.jpg');
   background-size:cover; background-position:center;
-">
+ ">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)">
     <div style="font-family:var(--f-display);font-weight:700;font-size:18px;color:var(--cyan)">🤖 MRZN Assistant</div>
     <button id="helper-bot-close" style="font-size:26px;color:var(--text-faint);background:none;border:none;cursor:pointer">✕</button>
@@ -211,13 +211,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
-<script src="js/language-manager.js"></script>  <!-- ← এটা উপরে আসতে হবে -->
+<script src="js/language-manager.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/app-request.js"></script>
 <script src="js/settings-apply.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/moderation.js"></script>
 <script src="js/app-detail.js"></script>
+<script src="js/copy-link.js"></script>
 
 <!-- ============ AI CHAT ============ -->
 <div id="ai-chat-container"></div>
