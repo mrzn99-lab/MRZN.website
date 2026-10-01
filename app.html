@@ -226,7 +226,7 @@
 <script src="js/general-ai.js"></script>
 <script src="js/assistant-ui.js"></script>
 <script src="js/download-sources.js"></script>
-<!-- ✅ DOWNLOAD SOURCES RENDERER -->
+<!-- ✅ DOWNLOAD SOURCES RENDERER WITH AUTH CHECK -->
 <script>
 // Display download sources in app detail page
 async function renderDownloadSources() {
@@ -255,7 +255,7 @@ async function renderDownloadSources() {
     
     if (sourceType === 'play_store' || sourceType === 'both') {
       downloadSources.innerHTML = `
-        <div class="download-option" onclick="window.open('https://play.google.com/store/apps/details?id=${appId}', '_blank')">
+        <div class="download-option" onclick="handleProtectedDownload('https://play.google.com/store/apps/details?id=${appId}')">
           <div class="download-option-icon">▶️</div>
           <div class="download-option-name">Play Store</div>
           <div class="download-option-meta">Official Source</div>
@@ -270,7 +270,7 @@ async function renderDownloadSources() {
         const sources = JSON.parse(app.source_url);
         if (sources.hosted) {
           downloadSources.innerHTML += `
-            <div class="download-option" onclick="window.open('${sources.hosted}', '_blank')">
+            <div class="download-option" onclick="handleProtectedDownload('${sources.hosted}')">
               <div class="download-option-icon">📥</div>
               <div class="download-option-name">Direct</div>
               <div class="download-option-meta">Hosted</div>
@@ -283,7 +283,7 @@ async function renderDownloadSources() {
       }
     } else if (sourceType === 'hosted' && app.source_url) {
       downloadSources.innerHTML = `
-        <div class="download-option" onclick="window.open('${app.source_url}', '_blank')">
+        <div class="download-option" onclick="handleProtectedDownload('${app.source_url}')">
           <div class="download-option-icon">📥</div>
           <div class="download-option-name">Direct</div>
           <div class="download-option-meta">Hosted</div>
@@ -296,7 +296,7 @@ async function renderDownloadSources() {
         'Third Party';
       
       downloadSources.innerHTML = `
-        <div class="download-option" onclick="window.open('${app.source_url}', '_blank')">
+        <div class="download-option" onclick="handleProtectedDownload('${app.source_url}')">
           <div class="download-option-icon">🔗</div>
           <div class="download-option-name">${externalName}</div>
           <div class="download-option-meta">External</div>
