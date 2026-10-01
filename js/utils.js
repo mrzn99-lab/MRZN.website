@@ -133,3 +133,31 @@ async function requireAuth(redirectTo = "login.html") {
   }
   return session;
 }
+
+async function handleProtectedDownload(url, redirectTo = "login.html") {
+  try {
+    if (!window.supabaseClient) {
+      window.location.href = redirectTo;
+      return false;
+    }
+
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    if (!session) {
+      showToast?.("Please log in to download apps.", "info");
+      setTimeout(() => {
+        window.location.href = redirectTo;
+      }, 350);
+      return false;
+    }
+
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Download access check failed:", error);
+    window.location.href = redirectTo;
+    return false;
+  }
+}
