@@ -1,312 +1,312 @@
-1  <!DOCTYPE html>
-2  <html lang="en">
-3  <head>
-4    <meta charset="UTF-8">
-5    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-6    <title>OTP Login - MRZN Apps & Games</title>
-7    <link rel="stylesheet" href="css/style.css">
-8  </head>
-9  <body>
-10   <div style="
-11     max-width: 400px;
-12     margin: 60px auto;
-13     padding: 30px;
-14     background: var(--panel);
-15     border: 1px solid var(--line);
-16     border-radius: 16px;
-17   ">
-18     <h1 style="
-19       color: var(--cyan);
-20       text-align: center;
-21       margin-bottom: 10px;
-22       font-size: 24px;
-23     ">📱 OTP Login</h1>
-24     
-25     <p style="
-26       text-align: center;
-27       color: var(--text-faint);
-28       margin-bottom: 30px;
-29       font-size: 13px;
-30     ">Secure login with One-Time Password</p>
-31
-32     <!-- Step 1: Email Input -->
-33     <div id="step-email" style="display: flex; flex-direction: column; gap: 16px;">
-34       <input 
-35         type="email" 
-37         id="email-input" 
-38         placeholder="your@email.com" 
-39         required
-40         style="
-41           padding: 12px 14px;
-42           border: 1px solid var(--line);
-43           border-radius: 10px;
-44           background: var(--void);
-45           color: var(--text);
-46           font-family: inherit;
-47           font-size: 14px;
-48           transition: all 0.2s;
-49         "
-50         onfocus="this.style.borderColor='var(--cyan)'"
-51         onblur="this.style.borderColor='var(--line)'"
-52       >
-53
-54       <button id="send-otp-btn" style="
-55         padding: 12px;
-56         background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
-57         color: var(--void);
-57         border: none;
-58         border-radius: 10px;
-59         font-weight: 800;
-60         cursor: pointer;
-61         font-size: 14px;
-62         transition: all 0.2s;
-63       " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-64         Send OTP
-65       </button>
-66
-67       <p style="
-68         text-align: center;
-69         color: var(--text-faint);
-70         font-size: 12px;
-71         margin-top: 20px;
-72       ">
-73         Prefer password? <a href="login.html" style="color: var(--cyan); text-decoration: none; font-weight: 600;">Login here</a>
-74       </p>
-75     </div>
-76
-77     <!-- Step 2: OTP Input -->
-78     <div id="step-otp" style="display: none; flex-direction: column; gap: 16px;">
-79       <p style="
-80         color: var(--text-faint);
-81         font-size: 13px;
-82         text-align: center;
-83       ">Enter the 8-digit code sent to your email</p>
-84
-85       <input 
-86         type="text" 
-87         id="otp-input" 
-88         placeholder="00000000" 
-89         maxlength="8"
-90         inputmode="numeric"
-91         required
-92         style="
-93           padding: 12px 14px;
-93           border: 1px solid var(--line);
-94           border-radius: 10px;
-95           background: var(--void);
-96           color: var(--text);
-97           font-family: monospace;
-98           font-size: 20px;
-99           text-align: center;
-100          letter-spacing: 8px;
-101          transition: all 0.2s;
-102        "
-103        onfocus="this.style.borderColor='var(--cyan)'"
-104        onblur="this.style.borderColor='var(--line)'"
-105      >
-106
-107      <button id="verify-otp-btn" style="
-108        padding: 12px;
-109        background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
-110        color: var(--void);
-111        border: none;
-112        border-radius: 10px;
-113        font-weight: 800;
-114        cursor: pointer;
-115        font-size: 14px;
-116        transition: all 0.2s;
-117      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-118        Verify OTP
-119      </button>
-120
-121      <button id="resend-btn" style="
-122        padding: 10px;
-123        background: transparent;
-124        color: var(--cyan);
-125        border: 1px solid var(--cyan);
-126        border-radius: 10px;
-127        cursor: pointer;
-128        font-size: 13px;
-129        font-weight: 600;
-130        transition: all 0.2s;
-131      " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
-132        🔄 Resend OTP
-133      </button>
-134
-135      <button id="back-btn" style="
-136        padding: 10px;
-136        background: transparent;
-137        color: var(--text-dim);
-138        border: 1px solid var(--line);
-139        border-radius: 10px;
-140        cursor: pointer;
-141        font-size: 13px;
-142        transition: all 0.2s;
-143      " onmouseover="this.style.borderColor='var(--text-dim)'" onmouseout="this.style.borderColor='var(--line)'">
-144        ← Back
-145      </button>
-146    </div>
-147
-148    <div id="otp-message" style="
-149      margin-top: 20px;
-150      padding: 12px;
-151      border-radius: 8px;
-152      text-align: center;
-153      font-size: 13px;
-154      display: none;
-155    "></div>
-156  </div>
-157
-158  <script src="js/supabase-client.js"></script>
-159  <script>
-160    const emailInput = document.getElementById('email-input');
-161    const sendOtpBtn = document.getElementById('send-otp-btn');
-162    const stepEmail = document.getElementById('step-email');
-162    const stepOtp = document.getElementById('step-otp');
-163    const otpInput = document.getElementById('otp-input');
-164    const verifyOtpBtn = document.getElementById('verify-otp-btn');
-165    const resendBtn = document.getElementById('resend-btn');
-166    const backBtn = document.getElementById('back-btn');
-167    const messageDiv = document.getElementById('otp-message');
-168
-169    let userEmail = '';
-170    let timer = 0;
-171
-172    // ============ SEND OTP ============
-173    sendOtpBtn.addEventListener('click', async () => {
-174      const email = emailInput.value.trim();
-175      
-176      if (!email) {
-177        showMessage('❌ Please enter email', 'error');
-177        return;
-178      }
-179
-180      sendOtpBtn.disabled = true;
-181      sendOtpBtn.textContent = '⏳ Sending...';
-182
-183      try {
-184        const { error } = await supabaseClient.auth.signInWithOtp({
-185          email: email,
-186          options: {
-187            shouldCreateUser: true
-188          }
-189        });
-190
-191        if (error) throw error;
-192
-193        userEmail = email;
-194        stepEmail.style.display = 'none';
-195        stepOtp.style.display = 'flex';
-196        otpInput.focus();
-197        showMessage('✅ OTP sent! Check your email', 'success');
-198        startResendTimer();
-198
-199      } catch (err) {
-200        showMessage(`❌ ${err.message}`, 'error');
-201      } finally {
-202        sendOtpBtn.disabled = false;
-203        sendOtpBtn.textContent = 'Send OTP';
-203      }
-204    });
-205
-206    // ============ VERIFY OTP ============
-207    verifyOtpBtn.addEventListener('click', async () => {
-208      const otp = otpInput.value.trim();
-209      
-210      if (!otp || otp.length !== 8) {
-211        showMessage('❌ Enter 8-digit code', 'error');
-211        return;
-212      }
-213
-214      verifyOtpBtn.disabled = true;
-215      verifyOtpBtn.textContent = '⏳ Verifying...';
-216
-217      try {
-218        const { data, error } = await supabaseClient.auth.verifyOtp({
-219          email: userEmail,
-220          token: otp,
-221          type: 'email'
-222        });
-223
-224        if (error) throw error;
-225
-226        showMessage('✅ Login successful! Redirecting...', 'success');
-227        setTimeout(() => {
-228          window.location.href = 'index.html';
-228        }, 1500);
-229
-230      } catch (err) {
-231        showMessage(`❌ ${err.message}`, 'error');
-231      } finally {
-232        verifyOtpBtn.disabled = false;
-233        verifyOtpBtn.textContent = 'Verify OTP';
-233      }
-234    });
-235
-236    // ============ RESEND OTP ============
-237    resendBtn.addEventListener('click', async () => {
-238      if (resendBtn.disabled) return;
-239      
-239      resendBtn.disabled = true;
-240      resendBtn.textContent = '⏳ Resending...';
-241
-242      try {
-243        const { error } = await supabaseClient.auth.signInWithOtp({
-244          email: userEmail,
-244          options: { shouldCreateUser: true }
-245        });
-246
-247        if (error) throw error;
-248        showMessage('✅ OTP resent!', 'success');
-249        startResendTimer();
-250
-251      } catch (err) {
-251        showMessage(`❌ ${err.message}`, 'error');
-252        resendBtn.disabled = false;
-253      }
-254    });
-255
-256    // ============ BACK BUTTON ============
-257    backBtn.addEventListener('click', () => {
-257      stepOtp.style.display = 'none';
-258      stepEmail.style.display = 'flex';
-259      emailInput.focus();
-260      otpInput.value = '';
-261      messageDiv.style.display = 'none';
-262    });
-263
-264    // ============ TIMER ============
-265    function startResendTimer() {
-266      timer = 60;
-266      resendBtn.disabled = true;
-267      
-268      const interval = setInterval(() => {
-269        timer--;
-269        resendBtn.textContent = `🔄 Resend in ${timer}s`;
-270        
-271        if (timer === 0) {
-272          clearInterval(interval);
-272          resendBtn.disabled = false;
-273          resendBtn.textContent = '🔄 Resend OTP';
-274        }
-275      }, 1000);
-276    }
-277
-278    // ============ SHOW MESSAGE ============
-279    function showMessage(msg, type) {
-279      messageDiv.style.display = 'block';
-280      messageDiv.textContent = msg;
-281      
-282      if (type === 'error') {
-283        messageDiv.style.background = 'rgba(255,71,87,0.1)';
-283        messageDiv.style.border = '1px solid rgba(255,71,87,0.2)';
-284        messageDiv.style.color = '#ff4757';
-285      } else {
-286        messageDiv.style.background = 'rgba(0,229,255,0.1)';
-286        messageDiv.style.border = '1px solid rgba(0,229,255,0.2)';
-287        messageDiv.style.color = 'var(--cyan)';
-288      }
-289    }
-290  </script>
-291</body>
-292</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTP Login - MRZN Apps & Games</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div style="
+    max-width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  ">
+    <h1 style="
+      color: var(--cyan);
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+    ">📱 OTP Login</h1>
+    
+    <p style="
+      text-align: center;
+      color: var(--text-faint);
+      margin-bottom: 30px;
+      font-size: 13px;
+    ">Secure login with One-Time Password</p>
+
+    <!-- Step 1: Email Input -->
+    <div id="step-email" style="display: flex; flex-direction: column; gap: 16px;">
+      <input 
+        type="email" 
+        id="email-input" 
+        placeholder="your@email.com" 
+        required
+        style="
+          padding: 12px 14px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: var(--void);
+          color: var(--text);
+          font-family: inherit;
+          font-size: 14px;
+          transition: all 0.2s;
+        "
+        onfocus="this.style.borderColor='var(--cyan)'"
+        onblur="this.style.borderColor='var(--line)'"
+      >
+
+      <button id="send-otp-btn" style="
+        padding: 12px;
+        background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+        color: var(--void);
+        border: none;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        Send OTP
+      </button>
+
+      <p style="
+        text-align: center;
+        color: var(--text-faint);
+        font-size: 12px;
+        margin-top: 20px;
+      ">
+        Prefer password? <a href="login.html" style="color: var(--cyan); text-decoration: none; font-weight: 600;">Login here</a>
+      </p>
+    </div>
+
+    <!-- Step 2: OTP Input -->
+    <div id="step-otp" style="display: none; flex-direction: column; gap: 16px;">
+      <p style="
+        color: var(--text-faint);
+        font-size: 13px;
+        text-align: center;
+      ">Enter the 8-digit code sent to your email</p>
+
+      <input 
+        type="text" 
+        id="otp-input" 
+        placeholder="00000000" 
+        maxlength="8"
+        inputmode="numeric"
+        required
+        style="
+          padding: 12px 14px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: var(--void);
+          color: var(--text);
+          font-family: monospace;
+          font-size: 20px;
+          text-align: center;
+          letter-spacing: 8px;
+          transition: all 0.2s;
+        "
+        onfocus="this.style.borderColor='var(--cyan)'"
+        onblur="this.style.borderColor='var(--line)'"
+      >
+
+      <button id="verify-otp-btn" style="
+        padding: 12px;
+        background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+        color: var(--void);
+        border: none;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+        Verify OTP
+      </button>
+
+      <button id="resend-btn" style="
+        padding: 10px;
+        background: transparent;
+        color: var(--cyan);
+        border: 1px solid var(--cyan);
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s;
+      " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+        🔄 Resend OTP
+      </button>
+
+      <button id="back-btn" style="
+        padding: 10px;
+        background: transparent;
+        color: var(--text-dim);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+      " onmouseover="this.style.borderColor='var(--text-dim)'" onmouseout="this.style.borderColor='var(--line)'">
+        ← Back
+      </button>
+    </div>
+
+    <div id="otp-message" style="
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+      display: none;
+    "></div>
+  </div>
+
+  <script src="js/supabase-client.js"></script>
+  <script>
+    const emailInput = document.getElementById('email-input');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const stepEmail = document.getElementById('step-email');
+    const stepOtp = document.getElementById('step-otp');
+    const otpInput = document.getElementById('otp-input');
+    const verifyOtpBtn = document.getElementById('verify-otp-btn');
+    const resendBtn = document.getElementById('resend-btn');
+    const backBtn = document.getElementById('back-btn');
+    const messageDiv = document.getElementById('otp-message');
+
+    let userEmail = '';
+    let timer = 0;
+
+    // ============ SEND OTP ============
+    sendOtpBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      
+      if (!email) {
+        showMessage('❌ Please enter email', 'error');
+        return;
+      }
+
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = '⏳ Sending...';
+
+      try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+          email: email,
+          options: {
+            shouldCreateUser: true
+          }
+        });
+
+        if (error) throw error;
+
+        userEmail = email;
+        stepEmail.style.display = 'none';
+        stepOtp.style.display = 'flex';
+        otpInput.focus();
+        showMessage('✅ OTP sent! Check your email', 'success');
+        startResendTimer();
+
+      } catch (err) {
+        showMessage(`❌ ${err.message}`, 'error');
+      } finally {
+        sendOtpBtn.disabled = false;
+        sendOtpBtn.textContent = 'Send OTP';
+      }
+    });
+
+    // ============ VERIFY OTP ============
+    verifyOtpBtn.addEventListener('click', async () => {
+      const otp = otpInput.value.trim();
+      
+      if (!otp || otp.length !== 8) {
+        showMessage('❌ Enter 8-digit code', 'error');
+        return;
+      }
+
+      verifyOtpBtn.disabled = true;
+      verifyOtpBtn.textContent = '⏳ Verifying...';
+
+      try {
+        const { data, error } = await supabaseClient.auth.verifyOtp({
+          email: userEmail,
+          token: otp,
+          type: 'email'
+        });
+
+        if (error) throw error;
+
+        showMessage('✅ Login successful! Redirecting...', 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+
+      } catch (err) {
+        showMessage(`❌ ${err.message}`, 'error');
+      } finally {
+        verifyOtpBtn.disabled = false;
+        verifyOtpBtn.textContent = 'Verify OTP';
+      }
+    });
+
+    // ============ RESEND OTP ============
+    resendBtn.addEventListener('click', async () => {
+      if (resendBtn.disabled) return;
+      
+      resendBtn.disabled = true;
+      resendBtn.textContent = '⏳ Resending...';
+
+      try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+          email: userEmail,
+          options: { shouldCreateUser: true }
+        });
+
+        if (error) throw error;
+        showMessage('✅ OTP resent!', 'success');
+        startResendTimer();
+
+      } catch (err) {
+        showMessage(`❌ ${err.message}`, 'error');
+        resendBtn.disabled = false;
+      }
+    });
+
+    // ============ BACK BUTTON ============
+    backBtn.addEventListener('click', () => {
+      stepOtp.style.display = 'none';
+      stepEmail.style.display = 'flex';
+      emailInput.focus();
+      otpInput.value = '';
+      messageDiv.style.display = 'none';
+    });
+
+    // ============ TIMER ============
+    function startResendTimer() {
+      timer = 60;
+      resendBtn.disabled = true;
+      
+      const interval = setInterval(() => {
+        timer--;
+        resendBtn.textContent = `🔄 Resend in ${timer}s`;
+        
+        if (timer === 0) {
+          clearInterval(interval);
+          resendBtn.disabled = false;
+          resendBtn.textContent = '🔄 Resend OTP';
+        }
+      }, 1000);
+    }
+
+    // ============ SHOW MESSAGE ============
+    function showMessage(msg, type) {
+      messageDiv.style.display = 'block';
+      messageDiv.textContent = msg;
+      
+      if (type === 'error') {
+        messageDiv.style.background = 'rgba(255,71,87,0.1)';
+        messageDiv.style.border = '1px solid rgba(255,71,87,0.2)';
+        messageDiv.style.color = '#ff4757';
+      } else {
+        messageDiv.style.background = 'rgba(0,229,255,0.1)';
+        messageDiv.style.border = '1px solid rgba(0,229,255,0.2)';
+        messageDiv.style.color = 'var(--cyan)';
+      }
+    }
+  </script>
+</body>
+</html>
