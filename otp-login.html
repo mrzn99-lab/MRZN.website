@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTP Login - MRZN Apps & Games</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div style="
+    max-width: 400px;
+    margin: 60px auto;
+    padding: 30px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  ">
+    <h1 style="
+      color: var(--cyan);
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+    ">📱 OTP Login</h1>
+    
+    <p style="
+      text-align: center;
+      color: var(--text-faint);
+      margin-bottom: 30px;
+      font-size: 13px;
+    ">Secure login with One-Time Password</p>
+
+    <!-- Step 1: Email Input -->
+    <div id="step-email" style="display: flex; flex-direction: column; gap: 16px;">
+      <input 
+        type="email" 
+        id="email-input" 
+        placeholder="your@email.com" 
+        required
+        style="
+          padding: 12px 14px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: var(--void);
+          color: var(--text);
+          font-family: inherit;
+          font-size: 14px;
+        "
+      >
+
+      <button id="send-otp-btn" style="
+        padding: 12px;
+        background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+        color: var(--void);
+        border: none;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 14px;
+      ">
+        Send OTP
+      </button>
+    </div>
+
+    <!-- Step 2: OTP Input -->
+    <div id="step-otp" style="display: none; flex-direction: column; gap: 16px;">
+      <p style="
+        color: var(--text-faint);
+        font-size: 13px;
+        text-align: center;
+      ">Enter the 6-digit code sent to your email</p>
+
+      <input 
+        type="text" 
+        id="otp-input" 
+        placeholder="000000" 
+        maxlength="6"
+        required
+        style="
+          padding: 12px 14px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: var(--void);
+          color: var(--text);
+          font-family: monospace;
+          font-size: 18px;
+          text-align: center;
+          letter-spacing: 10px;
+        "
+      >
+
+      <button id="verify-otp-btn" style="
+        padding: 12px;
+        background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+        color: var(--void);
+        border: none;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 14px;
+      ">
+        Verify OTP
+      </button>
+
+      <button id="resend-btn" style="
+        padding: 10px;
+        background: transparent;
+        color: var(--cyan);
+        border: 1px solid var(--cyan);
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+      ">
+        Resend OTP
+      </button>
+    </div>
+
+    <div id="otp-message" style="
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 13px;
+      display: none;
+    "></div>
+  </div>
+
+  <script src="js/supabase-client.js"></script>
+  <script>
+    const emailInput = document.getElementById('email-input');
+    const sendOtpBtn = document.getElementById('send-otp-btn');
+    const stepEmail = document.getElementById('step-email');
+    const stepOtp = document.getElementById('step-otp');
+    const otpInput = document.getElementById('otp-input');
+    const verifyOtpBtn = document.getElementById('verify-otp-btn');
+    const resendBtn = document.getElementById('resend-btn');
+    const messageDiv = document.getElementById('otp-message');
+
+    let userEmail = '';
+
+    // ============ SEND OTP ============
+    sendOtpBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      
+      if (!email) {
+        showMessage('❌ Please enter email', 'error');
+        return;
+      }
+
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = '⏳ Sending...';
+
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email: email,
+        options: {
+          shouldCreateUser: true
+        }
+      });
+
+      sendOtpBtn.disabled = false;
+      sendOtpBtn.textContent = 'Send OTP';
+
+      if (error) {
+        showMessage(`❌ ${error.message}`, 'error');
+        return;
+      }
+
+      userEmail = email;
+      stepEmail.style.display = 'none';
+      stepOtp.style.display = 'flex';
+      otpInput.focus();
+      showMessage('✅ OTP sent to your email!', 'success');
+    });
+
+    // ============ VERIFY OTP ============
+    verifyOtpBtn.addEventListener('click', async () => {
+      const otp = otpInput.value.trim();
+      
+      if (!otp || otp.length !== 6) {
+        showMessage('❌ Enter 6-digit code', 'error');
+        return;
+      }
+
+      verifyOtpBtn.disabled = true;
+      verifyOtpBtn.textContent = '⏳ Verifying...';
+
+      const { data, error } = await supabaseClient.auth.verifyOtp({
+        email: userEmail,
+        token: otp,
+        type: 'email'
+      });
+
+      verifyOtpBtn.disabled = false;
+      verifyOtpBtn.textContent = 'Verify OTP';
+
+      if (error) {
+        showMessage(`❌ ${error.message}`, 'error');
+        return;
+      }
+
+      showMessage('✅ Login successful! Redirecting...', 'success');
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 1500);
+    });
+
+    // ============ RESEND OTP ============
+    resendBtn.addEventListener('click', async () => {
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Resending...';
+
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email: userEmail,
+        options: { shouldCreateUser: true }
+      });
+
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend OTP';
+
+      if (error) {
+        showMessage(`❌ ${error.message}`, 'error');
+        return;
+      }
+
+      showMessage('✅ OTP resent!', 'success');
+    });
+
+    function showMessage(msg, type) {
+      messageDiv.style.display = 'block';
+      messageDiv.textContent = msg;
+      
+      if (type === 'error') {
+        messageDiv.style.background = 'rgba(255,71,87,0.1)';
+        messageDiv.style.color = '#ff4757';
+      } else {
+        messageDiv.style.background = 'rgba(0,229,255,0.1)';
+        messageDiv.style.color = 'var(--cyan)';
+      }
+    }
+  </script>
+</body>
+</html>
