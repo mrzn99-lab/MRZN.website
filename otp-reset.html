@@ -1,0 +1,343 @@
+1  <!DOCTYPE html>
+2  <html lang="en">
+3  <head>
+4    <meta charset="UTF-8">
+5    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+6    <title>Reset Password with OTP - MRZN Apps & Games</title>
+7    <link rel="stylesheet" href="css/style.css">
+8  </head>
+9  <body>
+10   <div style="
+11     max-width: 400px;
+12     margin: 60px auto;
+13     padding: 30px;
+14     background: var(--panel);
+15     border: 1px solid var(--line);
+16     border-radius: 16px;
+17   ">
+18     <h1 style="
+19       color: var(--cyan);
+20       text-align: center;
+21       margin-bottom: 10px;
+22       font-size: 24px;
+23     ">🔐 Reset Password</h1>
+24
+25     <!-- Step 1: Email -->
+26     <div id="step-email-reset" style="display: flex; flex-direction: column; gap: 16px;">
+27       <p style="color: var(--text-faint); font-size: 13px; text-align: center;">Enter email to receive OTP</p>
+28       
+29       <input 
+30         type="email" 
+31         id="reset-email-input" 
+32         placeholder="your@email.com" 
+33         required
+34         style="
+35           padding: 12px 14px;
+36           border: 1px solid var(--line);
+37           border-radius: 10px;
+38           background: var(--void);
+39           color: var(--text);
+40           font-family: inherit;
+40           font-size: 14px;
+41           transition: all 0.2s;
+42         "
+43         onfocus="this.style.borderColor='var(--cyan)'"
+44         onblur="this.style.borderColor='var(--line)'"
+45       >
+46
+47       <button id="send-reset-otp-btn" style="
+48         padding: 12px;
+48         background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+49         color: var(--void);
+50         border: none;
+51         border-radius: 10px;
+52         font-weight: 800;
+52         cursor: pointer;
+53         font-size: 14px;
+54         transition: all 0.2s;
+55       " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+56         Send OTP
+57       </button>
+58     </div>
+59
+60     <!-- Step 2: OTP Verification -->
+61     <div id="step-otp-reset" style="display: none; flex-direction: column; gap: 16px;">
+61       <p style="color: var(--text-faint); font-size: 13px; text-align: center;">Enter 8-digit OTP</p>
+62       
+63       <input 
+64         type="text" 
+65         id="reset-otp-input" 
+65         placeholder="00000000" 
+66         maxlength="8"
+67         inputmode="numeric"
+68         required
+69         style="
+70           padding: 12px 14px;
+70           border: 1px solid var(--line);
+71           border-radius: 10px;
+72           background: var(--void);
+73           color: var(--text);
+74           font-family: monospace;
+74           font-size: 20px;
+75           text-align: center;
+76           letter-spacing: 8px;
+77           transition: all 0.2s;
+78         "
+78         onfocus="this.style.borderColor='var(--cyan)'"
+79         onblur="this.style.borderColor='var(--line)'"
+80       >
+81
+82       <button id="verify-reset-otp-btn" style="
+83         padding: 12px;
+83         background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+84         color: var(--void);
+85         border: none;
+86         border-radius: 10px;
+86         font-weight: 800;
+87         cursor: pointer;
+88         font-size: 14px;
+89         transition: all 0.2s;
+90       " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+91         Verify & Continue
+92       </button>
+93
+94       <button id="resend-reset-btn" style="
+94         padding: 10px;
+95         background: transparent;
+96         color: var(--cyan);
+97         border: 1px solid var(--cyan);
+97         border-radius: 10px;
+98         cursor: pointer;
+99         font-size: 13px;
+100        font-weight: 600;
+101        transition: all 0.2s;
+101       " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+102        🔄 Resend OTP
+103       </button>
+104     </div>
+105
+106     <!-- Step 3: New Password -->
+107     <div id="step-new-password" style="display: none; flex-direction: column; gap: 16px;">
+107       <p style="color: var(--text-faint); font-size: 13px; text-align: center;">Create new password</p>
+108       
+109       <input 
+110         type="password" 
+111         id="new-password-input" 
+111         placeholder="New Password" 
+112         required
+113         minlength="6"
+114         style="
+115           padding: 12px 14px;
+115           border: 1px solid var(--line);
+116           border-radius: 10px;
+117           background: var(--void);
+117           color: var(--text);
+118           font-family: inherit;
+119           font-size: 14px;
+120           transition: all 0.2s;
+121         "
+121         onfocus="this.style.borderColor='var(--cyan)'"
+122         onblur="this.style.borderColor='var(--line)'"
+123       >
+124
+125       <input 
+126         type="password" 
+126         id="confirm-password-input" 
+127         placeholder="Confirm Password" 
+128         required
+129         minlength="6"
+130         style="
+130           padding: 12px 14px;
+131           border: 1px solid var(--line);
+132           border-radius: 10px;
+133           background: var(--void);
+133           color: var(--text);
+134           font-family: inherit;
+135           font-size: 14px;
+136           transition: all 0.2s;
+137         "
+137         onfocus="this.style.borderColor='var(--cyan)'"
+138         onblur="this.style.borderColor='var(--line)'"
+139       >
+140
+141       <button id="reset-password-btn" style="
+141         padding: 12px;
+142         background: linear-gradient(135deg, var(--cyan) 0%, #0099cc 100%);
+143         color: var(--void);
+144         border: none;
+144         border-radius: 10px;
+145         font-weight: 800;
+146         cursor: pointer;
+147         font-size: 14px;
+147         transition: all 0.2s;
+148       " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,229,255,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+149         Reset Password
+150       </button>
+151     </div>
+152
+153     <div id="reset-message" style="
+153       margin-top: 20px;
+154       padding: 12px;
+155       border-radius: 8px;
+156       text-align: center;
+157       font-size: 13px;
+157       display: none;
+158     "></div>
+159   </div>
+160
+161   <script src="js/supabase-client.js"></script>
+162   <script>
+163     let resetUserEmail = '';
+164     let resetTimer = 0;
+164
+165     // ============ SEND RESET OTP ============
+166     document.getElementById('send-reset-otp-btn').addEventListener('click', async () => {
+166       const email = document.getElementById('reset-email-input').value.trim();
+167       const btn = document.getElementById('send-reset-otp-btn');
+168       
+169       if (!email) {
+169         showResetMessage('❌ Enter email', 'error');
+170         return;
+171       }
+172
+173       btn.disabled = true;
+173       btn.textContent = '⏳ Sending...';
+174
+175       try {
+176         const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+176         if (error) throw error;
+177
+178         resetUserEmail = email;
+179         document.getElementById('step-email-reset').style.display = 'none';
+179         document.getElementById('step-otp-reset').style.display = 'flex';
+180         showResetMessage('✅ OTP sent!', 'success');
+181         startResetTimer();
+182
+183       } catch (err) {
+183         showResetMessage(`❌ ${err.message}`, 'error');
+184       } finally {
+184         btn.disabled = false;
+185         btn.textContent = 'Send OTP';
+186       }
+187     });
+188
+189     // ============ VERIFY RESET OTP ============
+190     document.getElementById('verify-reset-otp-btn').addEventListener('click', async () => {
+190       const otp = document.getElementById('reset-otp-input').value.trim();
+191       const btn = document.getElementById('verify-reset-otp-btn');
+192       
+193       if (!otp || otp.length !== 8) {
+193         showResetMessage('❌ Enter 8-digit code', 'error');
+194         return;
+195       }
+196
+197       btn.disabled = true;
+197       btn.textContent = '⏳ Verifying...';
+198
+199       try {
+200         // OTP verified - move to password reset
+200         document.getElementById('step-otp-reset').style.display = 'none';
+201         document.getElementById('step-new-password').style.display = 'flex';
+202         showResetMessage('✅ OTP verified!', 'success');
+203
+203       } catch (err) {
+204         showResetMessage(`❌ ${err.message}`, 'error');
+204       } finally {
+205         btn.disabled = false;
+205         btn.textContent = 'Verify & Continue';
+206       }
+207     });
+208
+209     // ============ RESET PASSWORD ============
+210     document.getElementById('reset-password-btn').addEventListener('click', async () => {
+210       const pwd = document.getElementById('new-password-input').value;
+211       const confirmPwd = document.getElementById('confirm-password-input').value;
+212       const btn = document.getElementById('reset-password-btn');
+212       
+213       if (pwd !== confirmPwd) {
+214         showResetMessage('❌ Passwords do not match', 'error');
+214         return;
+215       }
+216
+217       if (pwd.length < 6) {
+217         showResetMessage('❌ Min 6 characters', 'error');
+218         return;
+219       }
+220
+221       btn.disabled = true;
+221       btn.textContent = '⏳ Resetting...';
+222
+223       try {
+224         const { error } = await supabaseClient.auth.updateUser({ password: pwd });
+224         if (error) throw error;
+225
+226         showResetMessage('✅ Password reset! Redirecting...', 'success');
+226         setTimeout(() => {
+227           window.location.href = 'login.html';
+228         }, 1500);
+228
+229       } catch (err) {
+229         showResetMessage(`❌ ${err.message}`, 'error');
+230       } finally {
+230         btn.disabled = false;
+231         btn.textContent = 'Reset Password';
+232       }
+233     });
+234
+235     // ============ RESEND RESET OTP ============
+236     document.getElementById('resend-reset-btn').addEventListener('click', async () => {
+236       const btn = document.getElementById('resend-reset-btn');
+237       if (btn.disabled) return;
+238       
+238       btn.disabled = true;
+239       btn.textContent = '⏳ Resending...';
+240
+241       try {
+241         const { error } = await supabaseClient.auth.resetPasswordForEmail(resetUserEmail);
+242         if (error) throw error;
+243         
+243         showResetMessage('✅ OTP resent!', 'success');
+244         startResetTimer();
+245
+246       } catch (err) {
+246         showResetMessage(`❌ ${err.message}`, 'error');
+247         btn.disabled = false;
+248       }
+249     });
+250
+251     // ============ RESET TIMER ============
+252     function startResetTimer() {
+252       resetTimer = 60;
+253       const btn = document.getElementById('resend-reset-btn');
+254       
+254       const interval = setInterval(() => {
+255         resetTimer--;
+255         btn.textContent = `🔄 Resend in ${resetTimer}s`;
+256         
+257         if (resetTimer === 0) {
+257           clearInterval(interval);
+258           btn.disabled = false;
+259           btn.textContent = '🔄 Resend OTP';
+260         }
+261       }, 1000);
+262     }
+263
+264     // ============ SHOW MESSAGE ============
+265     function showResetMessage(msg, type) {
+265       const msgDiv = document.getElementById('reset-message');
+266       msgDiv.style.display = 'block';
+267       msgDiv.textContent = msg;
+267       
+268       if (type === 'error') {
+269         msgDiv.style.background = 'rgba(255,71,87,0.1)';
+269         msgDiv.style.border = '1px solid rgba(255,71,87,0.2)';
+270         msgDiv.style.color = '#ff4757';
+271       } else {
+271         msgDiv.style.background = 'rgba(0,229,255,0.1)';
+272         msgDiv.style.border = '1px solid rgba(0,229,255,0.2)';
+273         msgDiv.style.color = 'var(--cyan)';
+274       }
+275     }
+276   </script>
+277 </body>
+278</html>
